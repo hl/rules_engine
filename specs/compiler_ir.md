@@ -91,8 +91,4 @@ A compact, validated graph the compiler emits from the DSL for fast runtime exec
 - production_id stable per rule
 - token_signature order: ordered_wme_ids follow the topologically sorted LHS (alpha-to-beta plan order), bindings hash includes only variables referenced by RHS fields
 
-## Out of Scope (now)
 
-- codegen modules
-- advanced predicate ops beyond equality/range
-- distributed links
