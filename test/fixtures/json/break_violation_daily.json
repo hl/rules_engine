@@ -1,0 +1,11 @@
+{
+  "name": "break-violation-daily",
+  "salience": 70,
+  "when": [
+    {"binding": "day", "type": "WorkDay", "fields": {"employee_id": {"binding_ref": "e"}, "total_hours": {"binding_ref": "h"}, "breaks_taken": {"binding_ref": "b"}}},
+    {"guard": {"and": [{"cmp": [">=", {"binding_ref": "h"}, 6]}, {"cmp": ["<", {"binding_ref": "b"}, 1]}]}}
+  ],
+  "then": [
+    {"emit": "ComplianceViolation", "fields": {"employee_id": {"binding_ref": "e"}, "period_key": {"call": ["day_key", [{"binding_ref": "day"}]]}, "code": "BREAK_MISS", "severity": ":medium", "details": ">=6h requires 1 break"}}
+  ]
+}

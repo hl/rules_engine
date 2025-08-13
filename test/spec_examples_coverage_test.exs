@@ -3,125 +3,143 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
 
   @moduledoc """
   Comprehensive test to ensure all DSL examples from specification documents
-  are properly covered by tests. This validates that the examples in:
+  are properly covered by fixtures and tests. This validates that the examples in:
   - specs/dsl_examples.md
   - specs/payroll.md
   - specs/compliance.md  
   - specs/wage_cost_estimation.md
 
-  Are all tested and can be parsed by the DSL parser.
+  Have corresponding DSL and JSON fixtures that can be parsed correctly.
   """
 
-  describe "DSL Examples Coverage from Specification Documents" do
+  @fixture_dir Path.join([__DIR__, "fixtures"])
+
+  describe "Fixture Coverage from Specification Documents" do
     @spec_examples %{
       # From dsl_examples.md - General rules
       "us-daily-overtime" => %{
         domain: :payroll,
         salience: 50,
-        description: "Daily overtime calculation based on hours threshold"
+        description: "Daily overtime calculation based on hours threshold",
+        has_json_fixture: true
       },
       "sf-min-wage" => %{
         domain: :compliance,
         salience: 60,
-        description: "San Francisco minimum wage compliance check"
+        description: "San Francisco minimum wage compliance check",
+        has_json_fixture: true
       },
       "hospital-overtime-multiplier" => %{
         domain: :payroll,
         salience: 55,
-        description: "Hospital-specific overtime multiplier for healthcare roles"
+        description: "Hospital-specific overtime multiplier for healthcare roles",
+        has_json_fixture: true
       },
 
       # From dsl_examples.md - Tenant-specific rules
       "tenant-shift-premium-night" => %{
         domain: :payroll,
         salience: 40,
-        description: "Night shift premium for tenant-specific time windows"
+        description: "Night shift premium for tenant-specific time windows",
+        has_json_fixture: false
       },
       "tenant-approved-timesheets-only" => %{
         domain: :processing,
         salience: 90,
-        description: "Processing gate for approved timesheets only"
+        description: "Processing gate for approved timesheets only",
+        has_json_fixture: false
       },
 
       # From dsl_examples.md - Decision table style
       "break-violation-daily" => %{
         domain: :compliance,
         salience: 70,
-        description: "Daily break requirement compliance check"
+        description: "Daily break requirement compliance check",
+        has_json_fixture: true
       },
 
       # From dsl_examples.md - Temporal effective-dated joins
       "effective-payrate-selection" => %{
         domain: :payroll,
         salience: 80,
-        description: "Select effective pay rate for timesheet entries"
+        description: "Select effective pay rate for timesheet entries",
+        has_json_fixture: false
       },
 
       # From dsl_examples.md - Weekly overtime (simplified for parser compatibility)
       "overtime-weekly-general" => %{
         domain: :payroll,
         salience: 30,
-        description: "Weekly overtime calculation (simplified version)"
+        description: "Weekly overtime calculation (simplified version)",
+        has_json_fixture: false
       },
       "overtime-weekly-tenant-exception" => %{
         domain: :payroll,
         salience: 95,
-        description: "Tenant-specific weekly overtime exception (simplified)"
+        description: "Tenant-specific weekly overtime exception (simplified)",
+        has_json_fixture: false
       },
 
       # From dsl_examples.md - Location layering
       "holiday-premium-global" => %{
         domain: :payroll,
         salience: 20,
-        description: "Global holiday premium calculation"
+        description: "Global holiday premium calculation",
+        has_json_fixture: false
       },
       "holiday-premium-city-override" => %{
         domain: :payroll,
         salience: 85,
-        description: "City-specific holiday premium override"
+        description: "City-specific holiday premium override",
+        has_json_fixture: false
       },
 
       # From dsl_examples.md - Org-type compliance
       "nurse-min-rest-between-shifts" => %{
         domain: :compliance,
         salience: 65,
-        description: "Minimum rest period between nursing shifts"
+        description: "Minimum rest period between nursing shifts",
+        has_json_fixture: false
       },
 
       # From dsl_examples.md - Cost estimation
       "estimate-overtime-bucket" => %{
         domain: :cost_estimation,
         salience: 25,
-        description: "Estimate overtime costs by bucket"
+        description: "Estimate overtime costs by bucket",
+        has_json_fixture: false
       },
 
       # From wage_cost_estimation.md
-      "shift_hours" => %{
+      "shift-hours" => %{
         domain: :cost_estimation,
         salience: 300,
-        description: "Calculate shift hours for cost estimation"
+        description: "Calculate shift hours for cost estimation",
+        has_json_fixture: true
       },
       "base_cost" => %{
         domain: :cost_estimation,
         salience: 250,
-        description: "Calculate base cost from shift hours and rates"
+        description: "Calculate base cost from shift hours and rates",
+        has_json_fixture: false
       },
       "taxes_and_benefits" => %{
         domain: :cost_estimation,
         salience: 150,
-        description: "Calculate taxes and benefits costs (simplified)"
+        description: "Calculate taxes and benefits costs (simplified)",
+        has_json_fixture: false
       }
     }
 
-    test "all spec examples are covered by test fixtures" do
-      fixture_dir = Path.join([__DIR__, "fixtures", "dsl"])
-      fixture_files = File.ls!(fixture_dir) |> Enum.map(&String.replace(&1, ".rule", ""))
+    test "all spec examples are covered by DSL fixtures" do
+      dsl_fixture_dir = Path.join([@fixture_dir, "dsl"])
+      dsl_fixture_files = File.ls!(dsl_fixture_dir) |> Enum.map(&String.replace(&1, ".rule", ""))
 
       # Check coverage - convert rule names to fixture format
       spec_rule_names = Map.keys(@spec_examples)
 
       fixture_rule_names =
-        Enum.map(fixture_files, fn filename ->
+        Enum.map(dsl_fixture_files, fn filename ->
           String.replace(filename, "_", "-")
         end)
 
@@ -129,16 +147,68 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
       extra_fixtures = fixture_rule_names -- spec_rule_names
 
       if missing_fixtures != [] do
-        IO.puts("Missing fixtures for spec examples: #{inspect(missing_fixtures)}")
+        IO.puts("Missing DSL fixtures for spec examples: #{inspect(missing_fixtures)}")
       end
 
       if extra_fixtures != [] do
-        IO.puts("Extra fixtures not in specs: #{inspect(extra_fixtures)}")
+        IO.puts("Extra DSL fixtures not in specs: #{inspect(extra_fixtures)}")
       end
 
       # Assert we have substantial coverage
       coverage_ratio = length(spec_rule_names -- missing_fixtures) / length(spec_rule_names)
-      assert coverage_ratio >= 0.8, "Should have at least 80% coverage of spec examples"
+
+      assert coverage_ratio >= 0.8,
+             "Should have at least 80% DSL fixture coverage of spec examples"
+    end
+
+    test "JSON fixtures exist for key domain examples" do
+      json_fixture_dir = Path.join([@fixture_dir, "json"])
+
+      json_fixture_files =
+        File.ls!(json_fixture_dir)
+        |> Enum.filter(&String.ends_with?(&1, ".json"))
+        |> Enum.map(&String.replace(&1, ".json", ""))
+        |> Enum.map(&String.replace(&1, "_", "-"))
+
+      # Check which spec examples have JSON fixtures
+      examples_with_json =
+        @spec_examples
+        |> Enum.filter(fn {_name, meta} -> meta.has_json_fixture end)
+        |> Enum.map(fn {name, _meta} -> name end)
+
+      missing_json = examples_with_json -- json_fixture_files
+      extra_json = json_fixture_files -- examples_with_json
+
+      if missing_json != [] do
+        IO.puts("Missing JSON fixtures for examples: #{inspect(missing_json)}")
+      end
+
+      if extra_json != [] do
+        IO.puts("Extra JSON fixtures: #{inspect(extra_json)}")
+      end
+
+      assert length(examples_with_json) >= 5, "Should have JSON fixtures for key examples"
+      assert length(missing_json) == 0, "All marked JSON fixtures should exist"
+    end
+
+    test "DSL and JSON fixtures are consistent" do
+      json_fixture_dir = Path.join([@fixture_dir, "json"])
+
+      # Test each JSON fixture has corresponding DSL fixture
+      json_files =
+        File.ls!(json_fixture_dir)
+        |> Enum.filter(&String.ends_with?(&1, ".json"))
+
+      for json_file <- json_files do
+        json_base = String.replace(json_file, ".json", "")
+        dsl_file = String.replace(json_base, "-", "_") <> ".rule"
+        dsl_path = Path.join([@fixture_dir, "dsl", dsl_file])
+
+        assert File.exists?(dsl_path),
+               "DSL fixture #{dsl_file} should exist for JSON fixture #{json_file}"
+      end
+
+      assert length(json_files) >= 4, "Should have at least 4 JSON fixtures"
     end
 
     test "spec examples represent diverse domain patterns" do
@@ -170,28 +240,6 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
       assert cost_estimation_count >= 3, "Should have at least 3 cost estimation examples"
     end
 
-    test "spec examples document key DSL features" do
-      # This test documents that our spec examples cover important DSL features
-      features_covered = [
-        "Basic fact matching with field bindings",
-        "Guard expressions with comparisons and boolean logic",
-        "Time calculations (time_between, bucket functions)",
-        "Money calculations with decimal operations",
-        "String literals and interpolation patterns",
-        "Set membership and location matching",
-        "Multi-fact joins across different fact types",
-        "Salience-based rule prioritization",
-        "Emit statements for derived facts",
-        "Nested field access patterns",
-        "Arithmetic expressions in guards and emits",
-        "Date/datetime literal handling",
-        "Tenant-specific and location-specific rules"
-      ]
-
-      assert length(features_covered) >= 10, "Should document at least 10 DSL features"
-      assert true, "Spec examples cover comprehensive DSL feature set"
-    end
-
     test "rule examples follow consistent naming patterns" do
       rule_names = Map.keys(@spec_examples)
 
@@ -213,7 +261,7 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
 
   describe "Fixture File Validation" do
     test "all fixture files can be read and have expected structure" do
-      fixture_dir = Path.join([__DIR__, "fixtures", "dsl"])
+      fixture_dir = Path.join([@fixture_dir, "dsl"])
       fixture_files = File.ls!(fixture_dir) |> Enum.filter(&String.ends_with?(&1, ".rule"))
 
       for fixture_file <- fixture_files do

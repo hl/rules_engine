@@ -1,0 +1,13 @@
+{
+  "name": "hospital-overtime-multiplier",
+  "salience": 55,
+  "when": [
+    {"binding": "pr", "type": "PayRate", "fields": {"employee_id": {"binding_ref": "e"}, "rate_type": ":hourly", "base_rate": {"binding_ref": "r"}}},
+    {"binding": "emp", "type": "Employee", "fields": {"id": {"binding_ref": "e"}, "employment_type": ":hourly", "role": {"binding_ref": "role"}}},
+    {"binding": "org", "type": "OrgType", "fields": {"name": ":hospital"}},
+    {"guard": {"set": ["in", "role", ["RN", "MD", "ER_TECH"]]}}
+  ],
+  "then": [
+    {"emit": "RateAdjustment", "fields": {"employee_id": {"binding_ref": "e"}, "component": ":overtime_multiplier", "factor": 1.5}}
+  ]
+}

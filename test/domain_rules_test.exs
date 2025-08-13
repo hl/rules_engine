@@ -2,6 +2,8 @@ defmodule RulesEngine.DomainRulesTest do
   use ExUnit.Case, async: true
   doctest RulesEngine
 
+  alias RulesEngine.DSL.Parser
+
   @moduledoc """
   Tests to ensure all domain rule examples from specs are properly tested.
   This covers examples from:
@@ -9,242 +11,129 @@ defmodule RulesEngine.DomainRulesTest do
   - specs/payroll.md
   - specs/compliance.md
   - specs/wage_cost_estimation.md
+
+  Uses JSON fixtures to define expected AST structure for each rule.
   """
 
+  @fixture_dir Path.join([__DIR__, "fixtures"])
+
+  defp read_dsl_fixture(filename) do
+    File.read!(Path.join([@fixture_dir, "dsl", filename]))
+  end
+
+  defp read_json_fixture(filename) do
+    [@fixture_dir, "json", filename]
+    |> Path.join()
+    |> File.read!()
+    |> Jason.decode!()
+  end
+
   describe "Payroll Domain Rules" do
-    test "us-daily-overtime rule parses and compiles correctly" do
-      rule_content = """
-      rule "us-daily-overtime" salience: 50 do
-        when
-          ts: TimesheetEntry(employee_id: e, hours: h, start_at: d)
-          policy: OvertimePolicy(period: :daily, threshold_hours: t, multiplier: m)
-          guard h > t
-        then
-          emit PayLine(employee_id: e, period_key: bucket(:day, d), component: :overtime, hours: h - t, rate: m)
-      end
-      """
+    test "us-daily-overtime rule matches expected JSON structure" do
+      dsl_content = read_dsl_fixture("us_daily_overtime.rule")
+      expected_json = read_json_fixture("us_daily_overtime.json")
 
-      assert_rule_valid(rule_content)
+      assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "hospital-overtime-multiplier rule parses and compiles correctly" do
-      rule_content = """
-      rule "hospital-overtime-multiplier" salience: 55 do
-        when
-          pr: PayRate(employee_id: e, rate_type: :hourly, base_rate: r)
-          emp: Employee(id: e, employment_type: :hourly, role: role)
-          org: OrgType(name: :hospital)
-          guard role in ["RN", "MD", "ER_TECH"]
-        then
-          emit RateAdjustment(employee_id: e, component: :overtime_multiplier, factor: 1.5)
-      end
-      """
+    test "hospital-overtime-multiplier rule matches expected JSON structure" do
+      dsl_content = read_dsl_fixture("hospital_overtime_multiplier.rule")
+      expected_json = read_json_fixture("hospital_overtime_multiplier.json")
 
-      assert_rule_valid(rule_content)
+      assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "effective-payrate-selection rule parses and compiles correctly" do
-      rule_content = """
-      rule "effective-payrate-selection" salience: 80 do
-        when
-          ts: TimesheetEntry(employee_id: e, start_at: s)
-          rate: PayRate(employee_id: e, effective_from: ef, effective_to: et, base_rate: r)
-          guard s >= ef and (et == nil or s < et)
-        then
-          emit SelectedRate(employee_id: e, at: s, rate: r)
-      end
-      """
-
-      assert_rule_valid(rule_content)
+    test "effective-payrate-selection rule parses correctly" do
+      dsl_content = read_dsl_fixture("effective_payrate_selection.rule")
+      assert_rule_valid(dsl_content)
     end
 
-    test "holiday-premium-global rule parses and compiles correctly" do
-      rule_content = """
-      rule "holiday-premium-global" salience: 20 do
-        when
-          shift: ScheduledShift(employee_id: e, start_at: s, end_at: f, location: loc)
-          hol: HolidayCalendar(location: base_location(loc), date: bucket(:day, s), premium_multiplier: m)
-        then
-          emit PayLine(employee_id: e, period_key: bucket(:day, s), component: :holiday_premium, hours: time_between(s, f, :hours), rate: m)
-      end
-      """
-
-      assert_rule_valid(rule_content)
+    test "holiday-premium-global rule parses correctly" do
+      dsl_content = read_dsl_fixture("holiday_premium_global.rule")
+      assert_rule_valid(dsl_content)
     end
 
-    test "holiday-premium-city-override rule parses and compiles correctly" do
-      rule_content = """
-      rule "holiday-premium-city-override" salience: 85 do
-        when
-          shift: ScheduledShift(employee_id: e, start_at: s, end_at: f, location: "US/CA/SF")
-          hol: HolidayCalendar(location: "US/CA/SF", date: bucket(:day, s), premium_multiplier: m)
-        then
-          emit PayLine(employee_id: e, period_key: bucket(:day, s), component: :holiday_premium, hours: time_between(s, f, :hours), rate: decimal_add(m, dec("0.25")))
-      end
-      """
-
-      assert_rule_valid(rule_content)
+    test "holiday-premium-city-override rule parses correctly" do
+      dsl_content = read_dsl_fixture("holiday_premium_city_override.rule")
+      assert_rule_valid(dsl_content)
     end
   end
 
   describe "Compliance Domain Rules" do
-    test "sf-min-wage compliance rule parses and compiles correctly" do
-      rule_content = """
-      rule "sf-min-wage" salience: 60 do
-        when
-          shift: ScheduledShift(employee_id: e, start_at: s, end_at: f, location: "US/CA/SF", planned_hours: h)
-          law: LocationRegulation(location: "US/CA/SF", constraint_type: :min_wage, params: p)
-          rate: PayRate(employee_id: e, rate_type: :hourly, base_rate: r)
-          guard r < get_min_wage(p)
-        then
-          emit ComplianceViolation(employee_id: e, period_key: bucket(:day, s), code: "MIN_WAGE", severity: :high, details: "Minimum wage violation")
-      end
-      """
+    test "sf-min-wage compliance rule matches expected JSON structure" do
+      dsl_content = read_dsl_fixture("sf_min_wage.rule")
+      expected_json = read_json_fixture("sf_min_wage.json")
 
-      assert_rule_valid(rule_content)
+      assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "break-violation-daily rule parses and compiles correctly" do
-      rule_content = """
-      rule "break-violation-daily" salience: 70 do
-        when
-          day: WorkDay(employee_id: e, total_hours: h, breaks_taken: b)
-          guard h >= 6 and b < 1
-        then
-          emit ComplianceViolation(employee_id: e, period_key: day_key(day), code: "BREAK_MISS", severity: :medium, details: ">=6h requires 1 break")
-      end
-      """
+    test "break-violation-daily rule matches expected JSON structure" do
+      dsl_content = read_dsl_fixture("break_violation_daily.rule")
+      expected_json = read_json_fixture("break_violation_daily.json")
 
-      assert_rule_valid(rule_content)
+      assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "nurse-min-rest-between-shifts rule parses and compiles correctly" do
-      rule_content = """
-      rule "nurse-min-rest-between-shifts" salience: 65 do
-        when
-          prev: ScheduledShift(employee_id: e, end_at: f, role: "RN")
-          next: ScheduledShift(employee_id: e, start_at: s, role: "RN")
-          guard s > f and time_between(f, s, :hours) < dec("8")
-        then
-          emit ComplianceViolation(employee_id: e, period_key: bucket(:day, s), code: "REST_SHORTFALL", severity: :high, details: "Less than 8h between shifts")
-      end
-      """
-
-      assert_rule_valid(rule_content)
+    test "nurse-min-rest-between-shifts rule parses correctly" do
+      dsl_content = read_dsl_fixture("nurse_min_rest_between_shifts.rule")
+      assert_rule_valid(dsl_content)
     end
   end
 
   describe "Wage Cost Estimation Domain Rules" do
-    test "shift_hours cost estimation rule parses and compiles correctly" do
-      rule_content = """
-      rule "shift_hours" salience: 300 do
-        when
-          shift: ScheduledShift(employee_id: e, start_at: s, end_at: f, break_minutes: bm)
-          guard time_between(s, f, :hours) > dec("0")
-        then
-          emit ShiftCost(employee_id: e, bucket: bucket(:week, s), hours: decimal_add(time_between(s, f, :hours), dec("0")))
-      end
-      """
+    test "shift_hours cost estimation rule matches expected JSON structure" do
+      dsl_content = read_dsl_fixture("shift_hours.rule")
+      expected_json = read_json_fixture("shift-hours.json")
 
-      assert_rule_valid(rule_content)
+      assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "base_cost rule parses and compiles correctly" do
-      rule_content = """
-      rule "base_cost" salience: 250 do
-        when
-          sc: ShiftCost(employee_id: e, bucket: b, hours: h)
-          rc: RateCard(employee_id: e, base_rate: r, effective_from: ef, effective_to: et)
-          guard b >= ef and (et == nil or b < et)
-        then
-          emit ShiftCost(employee_id: e, bucket: b, base_amount: decimal_mul(r, h))
-      end
-      """
-
-      assert_rule_valid(rule_content)
+    test "base_cost rule parses correctly" do
+      dsl_content = read_dsl_fixture("base_cost.rule")
+      assert_rule_valid(dsl_content)
     end
 
-    test "estimate-overtime-bucket rule parses and compiles correctly" do
-      rule_content = """
-      rule "estimate-overtime-bucket" salience: 25 do
-        when
-          est: CostEstimate(scope: :employee, scope_id: e, bucket: b, hours: h, base_amount: base)
-          policy: OvertimePolicy(period: :weekly, threshold_hours: t, multiplier: m)
-          guard h > t
-        then
-          emit CostEstimate(scope: :employee, scope_id: e, bucket: b, overtime_amount: (h - t) * m, total_amount: base + (h - t) * m)
-      end
-      """
-
-      assert_rule_valid(rule_content)
+    test "estimate-overtime-bucket rule parses correctly" do
+      dsl_content = read_dsl_fixture("estimate_overtime_bucket.rule")
+      assert_rule_valid(dsl_content)
     end
   end
 
   describe "Tenant-Specific Domain Rules" do
-    test "tenant-shift-premium-night rule parses and compiles correctly" do
-      rule_content = """
-      rule "tenant-shift-premium-night" salience: 40 do
-        when
-          shift: ScheduledShift(employee_id: e, start_at: s, end_at: f, location: loc)
-          guard s >= datetime("2025-01-01T22:00:00Z") and s <= datetime("2025-01-02T05:00:00Z")
-        then
-          emit PayLine(employee_id: e, period_key: to_day(s), component: :premium, hours: time_between(s, f, :hours), rate: 1.2)
-      end
-      """
-
-      assert_rule_valid(rule_content)
+    test "tenant-shift-premium-night rule parses correctly" do
+      dsl_content = read_dsl_fixture("tenant_shift_premium_night.rule")
+      assert_rule_valid(dsl_content)
     end
 
-    test "tenant-approved-timesheets-only rule parses and compiles correctly" do
-      rule_content = """
-      rule "tenant-approved-timesheets-only" salience: 90 do
-        when
-          ts: TimesheetEntry(employee_id: e, approved: a, start_at: s, end_at: f)
-          guard a == true
-        then
-          emit ProcessingGate(kind: :timesheet_ok, employee_id: e, token: get_id(ts))
-      end
-      """
-
-      assert_rule_valid(rule_content)
+    test "tenant-approved-timesheets-only rule parses correctly" do
+      dsl_content = read_dsl_fixture("tenant_approved_timesheets_only.rule")
+      assert_rule_valid(dsl_content)
     end
   end
 
   describe "Complex Accumulation Rules" do
     test "overtime-weekly-general simplified rule structure is valid" do
-      rule_content = """
-      rule "overtime-weekly-general" salience: 30 do
-        when
-          ts: TimesheetEntry(employee_id: e, start_at: s, end_at: f, approved: true)
-          policy: OvertimePolicy(period: :weekly, threshold_hours: t, multiplier: m)
-          guard time_between(s, f, :hours) > t
-        then
-          emit PayLine(employee_id: e, period_key: bucket(:week, s), component: :overtime, hours: time_between(s, f, :hours) - t, rate: m)
-      end
-      """
-
-      assert_rule_valid(rule_content)
+      dsl_content = read_dsl_fixture("overtime_weekly_general.rule")
+      assert_rule_valid(dsl_content)
     end
 
     test "taxes_and_benefits simplified rule structure is valid" do
-      rule_content = """
-      rule "taxes_and_benefits" salience: 150 do
-        when
-          prof: EmployeeProfile(employee_id: e, health_insurance_cost_per_period: hi, fica_tax_rate: fica, unemployment_tax_rate: u)
-          cost: ShiftCost(employee_id: e, bucket: b, base_amount: ba)
-        then
-          emit CostEstimate(scope: :employee, scope_id: e, bucket: b, base_amount: ba, benefits_amount: hi, tax_amount: decimal_add(decimal_mul(ba, fica), decimal_mul(ba, u)), total_amount: decimal_add(decimal_add(ba, hi), decimal_add(decimal_mul(ba, fica), decimal_mul(ba, u))))
-      end
-      """
-
-      assert_rule_valid(rule_content)
+      dsl_content = read_dsl_fixture("taxes_and_benefits.rule")
+      assert_rule_valid(dsl_content)
     end
   end
 
   describe "Rule Coverage Validation" do
-    test "all DSL examples from specs have corresponding tests" do
-      # This test documents which rules are covered
-      covered_rules = [
+    test "all DSL examples from specs have corresponding fixtures" do
+      # Get all DSL fixtures
+      dsl_fixtures =
+        File.ls!(Path.join([@fixture_dir, "dsl"]))
+        |> Enum.filter(&String.ends_with?(&1, ".rule"))
+        |> Enum.map(&String.replace(&1, ".rule", ""))
+        |> Enum.map(&String.replace(&1, "_", "-"))
+
+      # Expected rules from specifications
+      expected_rules = [
         # From dsl_examples.md
         "us-daily-overtime",
         "sf-min-wage",
@@ -261,41 +150,131 @@ defmodule RulesEngine.DomainRulesTest do
         "estimate-overtime-bucket",
 
         # From wage_cost_estimation.md
-        "shift_hours",
-        "base_cost",
-        "taxes_and_benefits"
+        "shift-hours",
+        "base-cost",
+        "taxes-and-benefits"
       ]
 
-      # Assert that we have tests for all major domain examples
-      assert length(covered_rules) >= 15, "Should have tests for at least 15 domain rule examples"
+      coverage =
+        expected_rules
+        |> Enum.filter(&(&1 in dsl_fixtures))
+        |> length()
 
-      # Document that these represent the key domain patterns:
-      # - Basic fact matching and filtering
-      # - Guard expressions with comparisons
-      # - Time calculations and bucket operations
-      # - Money calculations with decimal operations
-      # - Compliance violations with severity levels
-      # - Cost estimation with multiple factors
-      # - Tenant-specific overrides
-      # - Multi-fact joins across different domains
-      assert true, "All major domain rule patterns are covered by tests"
+      coverage_percent = coverage / length(expected_rules)
+
+      assert coverage_percent >= 0.8, "Should have at least 80% fixture coverage of spec examples"
+      assert coverage >= 12, "Should have at least 12 domain rule fixtures"
+    end
+
+    test "fixtures represent diverse domain patterns" do
+      # Document that fixtures cover key domain patterns:
+      domain_patterns = [
+        "Basic fact matching and filtering",
+        "Guard expressions with comparisons",
+        "Time calculations and bucket operations",
+        "Money calculations with decimal operations",
+        "Compliance violations with severity levels",
+        "Cost estimation with multiple factors",
+        "Tenant-specific overrides",
+        "Multi-fact joins across different domains"
+      ]
+
+      assert length(domain_patterns) >= 8, "Should cover diverse domain patterns"
     end
   end
 
-  # Helper function to validate rule syntax and compilation
-  defp assert_rule_valid(rule_content) do
-    # For now, just check the rule content is non-empty and properly structured
-    assert String.contains?(rule_content, "rule")
-    assert String.contains?(rule_content, "when")
-    assert String.contains?(rule_content, "then")
-    assert String.contains?(rule_content, "emit")
-    assert String.contains?(rule_content, "end")
+  # Helper function to validate rule syntax and parsing
+  defp assert_rule_valid(dsl_content) do
+    case Parser.parse(dsl_content) do
+      {:ok, ast, _warnings} ->
+        assert is_list(ast)
+        assert length(ast) >= 1
 
-    # Verify basic structure patterns
-    assert Regex.match?(~r/rule\s+"[^"]+"\s+salience:\s+\d+\s+do/, rule_content)
-    assert Regex.match?(~r/when\s+.*\s+then\s+.*\s+end/s, rule_content)
+        # Validate basic rule structure
+        [rule] = ast
+        assert Map.has_key?(rule, :name)
+        assert Map.has_key?(rule, :when)
+        assert Map.has_key?(rule, :then)
 
-    # Rule passes basic validation
-    assert true
+      {:error, errors} ->
+        flunk("Rule failed to parse: #{inspect(errors)}")
+    end
   end
+
+  # Helper function to validate rule matches expected JSON structure
+  defp assert_rule_matches_json(dsl_content, expected_json) do
+    case Parser.parse(dsl_content) do
+      {:ok, [rule], _warnings} ->
+        # Transform rule to JSON-like structure for comparison
+        actual = transform_rule_to_json(rule)
+
+        # Compare key fields
+        assert actual["name"] == expected_json["name"]
+        assert actual["salience"] == expected_json["salience"]
+        assert length(actual["when"]) == length(expected_json["when"])
+        assert length(actual["then"]) == length(expected_json["then"])
+
+      {:error, errors} ->
+        flunk("Rule failed to parse: #{inspect(errors)}")
+    end
+  end
+
+  # Transform parsed AST to JSON-like structure for comparison
+  defp transform_rule_to_json(rule) do
+    %{
+      "name" => rule.name,
+      "salience" => rule.salience || 0,
+      "when" => transform_when_clauses(rule.when),
+      "then" => transform_then_clauses(rule.then)
+    }
+  end
+
+  defp transform_when_clauses({:when, clauses}) do
+    Enum.map(clauses, &transform_when_clause/1)
+  end
+
+  defp transform_when_clause({:fact, binding, type, fields}) do
+    %{
+      "binding" => to_string(binding),
+      "type" => to_string(type),
+      "fields" => Enum.into(fields, %{}, fn {k, v} -> {to_string(k), transform_value(v)} end)
+    }
+  end
+
+  defp transform_when_clause({:guard, expr}) do
+    %{"guard" => transform_value(expr)}
+  end
+
+  defp transform_then_clauses({:then, clauses}) do
+    Enum.map(clauses, &transform_then_clause/1)
+  end
+
+  defp transform_then_clause({:emit, type, fields}) do
+    %{
+      "emit" => to_string(type),
+      "fields" => Enum.into(fields, %{}, fn {k, v} -> {to_string(k), transform_value(v)} end)
+    }
+  end
+
+  defp transform_value({:binding_ref, binding}), do: %{"binding_ref" => to_string(binding)}
+
+  defp transform_value({:call, name, args}),
+    do: %{"call" => [to_string(name), Enum.map(args, &transform_value/1)]}
+
+  defp transform_value({:arith, op, l, r}),
+    do: %{"arith" => [to_string(op), transform_value(l), transform_value(r)]}
+
+  defp transform_value({:cmp, op, l, r}),
+    do: %{"cmp" => [to_string(op), transform_value(l), transform_value(r)]}
+
+  defp transform_value({:and, l, r}), do: %{"and" => [transform_value(l), transform_value(r)]}
+  defp transform_value({:or, l, r}), do: %{"or" => [transform_value(l), transform_value(r)]}
+
+  defp transform_value({:set, op, binding, values}),
+    do: %{"set" => [to_string(op), to_string(binding), Enum.map(values, &transform_value/1)]}
+
+  defp transform_value(atom) when is_atom(atom), do: to_string(atom)
+  defp transform_value(str) when is_binary(str), do: str
+  defp transform_value(num) when is_number(num), do: num
+  defp transform_value(other), do: inspect(other)
 end

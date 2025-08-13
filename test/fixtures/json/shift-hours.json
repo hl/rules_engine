@@ -1,0 +1,11 @@
+{
+  "name": "shift_hours",
+  "salience": 300,
+  "when": [
+    {"binding": "shift", "type": "ScheduledShift", "fields": {"employee_id": {"binding_ref": "e"}, "start_at": {"binding_ref": "s"}, "end_at": {"binding_ref": "f"}, "break_minutes": {"binding_ref": "bm"}}},
+    {"guard": {"cmp": [">", {"call": ["time_between", [{"binding_ref": "s"}, {"binding_ref": "f"}, ":hours"]]}, {"call": ["dec", ["0"]]}]}}
+  ],
+  "then": [
+    {"emit": "ShiftCost", "fields": {"employee_id": {"binding_ref": "e"}, "bucket": {"call": ["bucket", [":week", {"binding_ref": "s"}]]}, "hours": {"call": ["decimal_add", [{"call": ["time_between", [{"binding_ref": "s"}, {"binding_ref": "f"}, ":hours"]]}, {"call": ["dec", ["0"]]}]]}}}
+  ]
+}
