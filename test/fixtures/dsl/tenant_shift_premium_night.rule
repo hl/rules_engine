@@ -1,0 +1,7 @@
+rule "tenant-shift-premium-night" salience: 40 do
+  when
+    shift: ScheduledShift(employee_id: e, start_at: s, end_at: f, location: loc)
+    guard s between DT'2025-01-01T22:00:00Z' and DT'2025-01-02T05:00:00Z'
+  then
+    emit PayLine(employee_id: e, period_key: to_day(s), component: :premium, hours: time_between(s, f, :hours), rate: 1.2)
+end

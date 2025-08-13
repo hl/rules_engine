@@ -1,0 +1,7 @@
+rule "holiday-premium-global" salience: 20 do
+  when
+    shift: ScheduledShift(employee_id: e, start_at: s, end_at: f, location: loc)
+    hol: HolidayCalendar(location: loc, date: d, premium_multiplier: m)
+  then
+    emit PayLine(employee_id: e, period_key: bucket(:day, s), component: :holiday_premium, hours: time_between(s, f, :hours), rate: m)
+end

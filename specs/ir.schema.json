@@ -1,0 +1,490 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epona.dev/schemas/ir.schema.json",
+  "title": "RulesEngine RETE IR",
+  "type": "object",
+  "required": [
+    "version",
+    "tenant_id",
+    "rules",
+    "network"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^v\\d+$"
+    },
+    "tenant_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_checksum": {
+      "type": "string"
+    },
+    "compiled_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "salience",
+          "bindings",
+          "actions"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "salience": {
+            "type": "integer"
+          },
+          "bindings": {
+            "type": "array",
+            "description": "Bound fact patterns in order of appearance",
+            "items": {
+              "type": "object",
+              "required": [
+                "binding",
+                "type",
+                "alpha_tests"
+              ],
+              "properties": {
+                "binding": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "alpha_tests": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/$defs/predicate"
+                  }
+                }
+              }
+            }
+          },
+          "beta_joins": {
+            "type": "array",
+            "description": "Join predicates across bindings",
+            "items": {
+              "$ref": "#/$defs/predicate"
+            }
+          },
+          "actions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/action"
+            }
+          }
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "required": [
+        "alpha",
+        "beta",
+        "accumulate",
+        "agenda"
+      ],
+      "properties": {
+        "alpha": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/alpha_node"
+          }
+        },
+        "beta": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/beta_node"
+          }
+        },
+        "accumulate": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/accumulate_node"
+          }
+        },
+        "agenda": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/activation"
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "reducer": {
+      "type": "object",
+      "required": [
+        "name",
+        "kind"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "sum",
+            "count",
+            "min",
+            "max",
+            "avg"
+          ]
+        },
+        "expr": {
+          "$ref": "#/$defs/term"
+        }
+      }
+    },
+    "accumulate_node": {
+      "type": "object",
+      "required": [
+        "id",
+        "from",
+        "group_by",
+        "reducers"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string",
+          "description": "input node id"
+        },
+        "group_by": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/term"
+          }
+        },
+        "reducers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reducer"
+          }
+        },
+        "out_memory": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "function_call": {
+      "type": "object",
+      "required": [
+        "name",
+        "args"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/term"
+          }
+        }
+      }
+    },
+    "join_cond": {
+      "type": "object",
+      "required": [
+        "left",
+        "op",
+        "right"
+      ],
+      "properties": {
+        "left": {
+          "$ref": "#/$defs/term"
+        },
+        "op": {
+          "type": "string",
+          "enum": [
+            "=="
+          ]
+        },
+        "right": {
+          "$ref": "#/$defs/term"
+        }
+      }
+    },
+    "alpha_node": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "tests"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "tests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/predicate"
+          }
+        }
+      }
+    },
+    "beta_node": {
+      "type": "object",
+      "required": [
+        "id",
+        "left",
+        "right",
+        "on"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "left": {
+          "type": "string",
+          "description": "node id"
+        },
+        "right": {
+          "type": "string",
+          "description": "node id"
+        },
+        "on": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/join_cond"
+          }
+        },
+        "post_filters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/predicate"
+          }
+        }
+      }
+    },
+    "activation": {
+      "type": "object",
+      "required": [
+        "production_id",
+        "token_signature",
+        "salience"
+      ],
+      "properties": {
+        "production_id": {
+          "type": "string"
+        },
+        "token_signature": {
+          "type": "string"
+        },
+        "salience": {
+          "type": "integer"
+        },
+        "inserted_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "predicate": {
+      "type": "object",
+      "required": [
+        "op",
+        "left",
+        "right"
+      ],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "==",
+            "!=",
+            ">",
+            ">=",
+            "<",
+            "<=",
+            "in",
+            "not_in",
+            "between",
+            "overlap"
+          ]
+        },
+        "left": {
+          "$ref": "#/$defs/term"
+        },
+        "right": {
+          "$ref": "#/$defs/term"
+        },
+        "extra": {
+          "description": "for between: {min, max}, compound trees etc.",
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      }
+    },
+    "term": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/literal"
+        },
+        {
+          "$ref": "#/$defs/binding_ref"
+        },
+        {
+          "$ref": "#/$defs/arithmetic"
+        },
+        {
+          "$ref": "#/$defs/function_call"
+        }
+      ]
+    },
+    "binding_ref": {
+      "type": "object",
+      "required": [
+        "binding",
+        "field"
+      ],
+      "properties": {
+        "binding": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        }
+      }
+    },
+    "arithmetic": {
+      "type": "object",
+      "required": [
+        "op",
+        "left",
+        "right"
+      ],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "+",
+            "-",
+            "*",
+            "/"
+          ]
+        },
+        "left": {
+          "$ref": "#/$defs/term"
+        },
+        "right": {
+          "$ref": "#/$defs/term"
+        }
+      }
+    },
+    "literal": {
+      "type": "object",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "string",
+            "number",
+            "decimal",
+            "bool",
+            "date",
+            "datetime"
+          ]
+        },
+        "value": {}
+      }
+    },
+    "action": {
+      "type": "object",
+      "required": [
+        "op"
+      ],
+      "properties": {
+        "op": {
+          "type": "string",
+          "enum": [
+            "emit",
+            "log",
+            "call"
+          ]
+        },
+        "type_name": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "for emit"
+        },
+        "fields": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/term"
+          }
+        },
+        "level": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "message": {
+          "$ref": "#/$defs/term"
+        },
+        "mfa": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "mod",
+            "fun",
+            "args"
+          ],
+          "properties": {
+            "mod": {
+              "type": "string"
+            },
+            "fun": {
+              "type": "string"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/term"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

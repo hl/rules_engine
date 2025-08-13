@@ -1,0 +1,8 @@
+rule "estimate-overtime-bucket" salience: 25 do
+  when
+    est: CostEstimate(scope: :employee, scope_id: e, bucket: b, hours: h, base_amount: base)
+    policy: OvertimePolicy(period: :weekly, threshold_hours: t, multiplier: m)
+    guard h > t
+  then
+    emit CostEstimate(scope: :employee, scope_id: e, bucket: b, overtime_amount: decimal_multiply(decimal_subtract(h, t), m), total_amount: decimal_add(base, decimal_multiply(decimal_subtract(h, t), m)))
+end

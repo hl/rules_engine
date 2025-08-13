@@ -1,0 +1,7 @@
+rule "break-violation-daily" salience: 70 do
+  when
+    day: WorkDay(employee_id: e, total_hours: h, breaks_taken: b)
+    guard h >= 6 and b < 1
+  then
+    emit ComplianceViolation(employee_id: e, period_key: day_key(day), code: "BREAK_MISS", severity: :medium, details: ">=6h requires 1 break")
+end

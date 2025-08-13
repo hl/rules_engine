@@ -1,0 +1,7 @@
+rule "shift_hours" salience: 300 do
+  when
+    shift: ScheduledShift(employee_id: e, start_at: s, end_at: f, break_minutes: bm)
+    guard time_between(s, f, :hours) > dec("0")
+  then
+    emit ShiftCost(employee_id: e, bucket: bucket(:week, s), hours: decimal_add(time_between(s, f, :hours), dec("0")))
+end

@@ -1,0 +1,8 @@
+rule "us-daily-overtime" salience: 50 do
+  when
+    ts: TimesheetEntry(employee_id: e, hours: h, start_at: d)
+    policy: OvertimePolicy(period: :daily, threshold_hours: t, multiplier: m)
+    guard h > t
+  then
+    emit PayLine(employee_id: e, period_key: bucket(:day, d), component: :overtime, hours: h - t, rate: m)
+end

@@ -1,0 +1,7 @@
+rule "taxes_and_benefits" salience: 150 do
+  when
+    prof: EmployeeProfile(employee_id: e, health_insurance_cost_per_period: hi, fica_tax_rate: fica, unemployment_tax_rate: u)
+    cost: ShiftCost(employee_id: e, bucket: b, base_amount: ba)
+  then
+    emit CostEstimate(scope: :employee, scope_id: e, bucket: b, base_amount: ba, benefits_amount: hi, tax_amount: decimal_add(decimal_mul(ba, fica), decimal_mul(ba, u)), total_amount: decimal_add(decimal_add(ba, hi), decimal_add(decimal_mul(ba, fica), decimal_mul(ba, u))))
+end

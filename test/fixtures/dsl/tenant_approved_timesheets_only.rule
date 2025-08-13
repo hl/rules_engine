@@ -1,0 +1,7 @@
+rule "tenant-approved-timesheets-only" salience: 90 do
+  when
+    ts: TimesheetEntry(employee_id: e, approved: a, start_at: s, end_at: f)
+    guard a == true
+  then
+    emit ProcessingGate(kind: :timesheet_ok, employee_id: e, token: get_id(ts))
+end

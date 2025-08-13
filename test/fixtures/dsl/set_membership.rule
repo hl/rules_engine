@@ -1,0 +1,7 @@
+rule "set-membership" salience: 5 do
+  when
+    e: Employee(id: id, department: dept)
+    guard dept in ["engineering", "product", "design"]
+  then
+    emit Tag(entity: "employee", id: id, tag: "maker")
+end

@@ -1,0 +1,9 @@
+rule "hospital-overtime-multiplier" salience: 55 do
+  when
+    pr: PayRate(employee_id: e, rate_type: :hourly, base_rate: r)
+    emp: Employee(id: e, employment_type: :hourly, role: role)
+    org: OrgType(name: :hospital)
+    guard role in ["RN", "MD", "ER_TECH"]
+  then
+    emit RateAdjustment(employee_id: e, component: :overtime_multiplier, factor: 1.5)
+end

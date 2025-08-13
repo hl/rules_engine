@@ -1,0 +1,8 @@
+rule "base_cost" salience: 250 do
+  when
+    sc: ShiftCost(employee_id: e, bucket: b, hours: h)
+    rc: RateCard(employee_id: e, base_rate: r, effective_from: ef, effective_to: et)
+    guard b between ef and et
+  then
+    emit ShiftCost(employee_id: e, bucket: b, base_amount: decimal_mul(r, h))
+end

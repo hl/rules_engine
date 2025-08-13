@@ -1,0 +1,8 @@
+rule "minimum-wage" do
+  when
+    shift: Shift(employee_id: e, hours: h, hourly_rate: w, date: d, jurisdiction: j)
+    law: Jurisdiction(code: j, min_wage: m)
+    guard w < m and d between D'2025-01-01' and D'2025-12-31'
+  then
+    emit ComplianceViolation(kind: "min_wage_breach", employee_id: e, deficit_per_hour: m - w)
+end

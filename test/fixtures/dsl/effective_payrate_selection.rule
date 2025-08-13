@@ -1,0 +1,8 @@
+rule "effective-payrate-selection" salience: 80 do
+  when
+    ts: TimesheetEntry(employee_id: e, start_at: s)
+    rate: PayRate(employee_id: e, effective_from: ef, effective_to: et, base_rate: r)
+    guard s >= ef and (et == nil or s < et)
+  then
+    emit SelectedRate(employee_id: e, at: s, rate: r)
+end

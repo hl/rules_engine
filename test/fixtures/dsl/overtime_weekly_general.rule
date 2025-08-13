@@ -1,0 +1,8 @@
+rule "overtime-weekly-general" salience: 30 do
+  when
+    ts: TimesheetEntry(employee_id: e, start_at: s, end_at: f, approved: true)
+    policy: OvertimePolicy(period: :weekly, threshold_hours: t, multiplier: m)
+    guard time_between(s, f, :hours) > t
+  then
+    emit PayLine(employee_id: e, period_key: bucket(:week, s), component: :overtime, hours: decimal_subtract(time_between(s, f, :hours), t), rate: m)
+end

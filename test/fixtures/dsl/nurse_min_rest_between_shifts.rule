@@ -1,0 +1,8 @@
+rule "nurse-min-rest-between-shifts" salience: 65 do
+  when
+    prev: ScheduledShift(employee_id: e, end_at: f, role: "RN")
+    next: ScheduledShift(employee_id: e, start_at: s, role: "RN")
+    guard s > f and time_between(f, s, :hours) < dec("8")
+  then
+    emit ComplianceViolation(employee_id: e, period_key: bucket(:day, s), code: "REST_SHORTFALL", severity: :high, details: "Less than 8h between shifts")
+end

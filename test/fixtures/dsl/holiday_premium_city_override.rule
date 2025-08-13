@@ -1,0 +1,7 @@
+rule "holiday-premium-city-override" salience: 85 do
+  when
+    shift: ScheduledShift(employee_id: e, start_at: s, end_at: f, location: "US/CA/SF")
+    hol: HolidayCalendar(location: "US/CA/SF", date: d, premium_multiplier: m)
+  then
+    emit PayLine(employee_id: e, period_key: bucket(:day, s), component: :holiday_premium, hours: time_between(s, f, :hours), rate: decimal_add(m, dec("0.25")))
+end

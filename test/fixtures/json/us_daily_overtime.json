@@ -1,0 +1,12 @@
+{
+  "name": "us-daily-overtime",
+  "salience": 50,
+  "when": [
+    {"binding": "ts", "type": "TimesheetEntry", "fields": {"employee_id": {"binding_ref": "e"}, "hours": {"binding_ref": "h"}, "start_at": {"binding_ref": "d"}}},
+    {"binding": "policy", "type": "OvertimePolicy", "fields": {"period": ":daily", "threshold_hours": {"binding_ref": "t"}, "multiplier": {"binding_ref": "m"}}},
+    {"guard": {"cmp": [">", {"binding_ref": "h"}, {"binding_ref": "t"}]}}
+  ],
+  "then": [
+    {"emit": "PayLine", "fields": {"employee_id": {"binding_ref": "e"}, "period_key": {"call": ["bucket", [":day", {"binding_ref": "d"}]]}, "component": ":overtime", "hours": {"arith": ["-", {"binding_ref": "h"}, {"binding_ref": "t"}]}, "rate": {"binding_ref": "m"}}}
+  ]
+}
