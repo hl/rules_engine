@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: build-and-test
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+
+    env:
+      MIX_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.19'
+          otp-version: '27'
+
+      - name: Restore mix cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+            ~/.mix
+            ~/.cache/rebar3
+            ~/.hex
+          key: mix-${{ runner.os }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            mix-${{ runner.os }}-
+
+      - name: Install deps
+        run: mix deps.get --only test
+
+      - name: Check formatting
+        run: mix format --check-formatted
+
+      - name: Compile with warnings as errors
+        run: mix compile --warnings-as-errors
+
+      - name: Credo (strict)
+        run: mix credo --strict
+
+      - name: Dialyzer PLT cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            priv/plts
+            _build/${{ env.MIX_ENV }}/dialyzer
+          key: dialyzer-${{ runner.os }}-${{ env.MIX_ENV }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            dialyzer-${{ runner.os }}-${{ env.MIX_ENV }}-
+
+      - name: Create PLT dir
+        run: mkdir -p priv/plts
+
+      - name: Dialyzer
+        run: mix dialyzer --format short
+
+      - name: Test
+        run: mix test --color
