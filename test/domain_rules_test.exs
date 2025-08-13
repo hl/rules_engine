@@ -245,7 +245,7 @@ defmodule RulesEngine.DomainRulesTest do
     end
   end
 
-  # Transform parsed AST to JSON-like structure for comparison  
+  # Transform parsed AST to JSON-like structure for comparison
   defp transform_rule_to_json(rule) do
     case rule do
       %{name: name, salience: {:when, _} = when_clause, then: then_clause} ->
@@ -266,10 +266,7 @@ defmodule RulesEngine.DomainRulesTest do
           "then" => transform_then_clauses(then_clause)
         }
 
-      other ->
-        # Debug output for unexpected structure
-        IO.inspect(other, label: "Unexpected rule structure")
-
+      _other ->
         %{
           "name" => "unknown",
           "salience" => 0,
@@ -277,15 +274,6 @@ defmodule RulesEngine.DomainRulesTest do
           "then" => []
         }
     end
-  end
-
-  defp transform_rule_to_json(%{name: name, when: when_clause, then: then_clause}) do
-    %{
-      "name" => name,
-      "salience" => 0,
-      "when" => transform_when_clauses(when_clause),
-      "then" => transform_then_clauses(then_clause)
-    }
   end
 
   defp transform_when_clauses(nil), do: []

@@ -164,17 +164,4 @@ defmodule RulesEngine do
       ]
     }
   end
-
-  @doc """
-  Hello world function for basic testing.
-
-  ## Examples
-
-      iex> RulesEngine.hello()
-      :world
-
-  """
-  def hello do
-    :world
-  end
 end

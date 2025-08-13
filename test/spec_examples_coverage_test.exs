@@ -201,7 +201,7 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
       end
 
       assert length(examples_with_json) >= 5, "Should have JSON fixtures for key examples"
-      assert length(missing_json) == 0, "All marked JSON fixtures should exist"
+      assert Enum.empty?(missing_json), "All marked JSON fixtures should exist"
     end
 
     test "DSL and JSON fixtures are consistent" do
