@@ -1,0 +1,11 @@
+{
+  "name": "set-membership",
+  "salience": 5,
+  "when": [
+    {"binding": "e", "type": "Employee", "fields": {"id": {"binding_ref": "id"}, "department": {"binding_ref": "dept"}}},
+    {"guard": {"set": ["in", "dept", ["engineering", "product", "design"]]}}
+  ],
+  "then": [
+    {"emit": "Tag", "fields": {"entity": "employee", "id": {"binding_ref": "id"}, "tag": "maker"}}
+  ]
+}

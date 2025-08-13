@@ -1,0 +1,12 @@
+{
+  "name": "base_cost",
+  "salience": 250,
+  "when": [
+    {"binding": "sc", "type": "ShiftCost", "fields": {"employee_id": {"binding_ref": "e"}, "bucket": {"binding_ref": "b"}, "hours": {"binding_ref": "h"}}},
+    {"binding": "rc", "type": "RateCard", "fields": {"employee_id": {"binding_ref": "e"}, "base_rate": {"binding_ref": "r"}, "effective_from": {"binding_ref": "ef"}, "effective_to": {"binding_ref": "et"}}},
+    {"guard": {"between": [{"binding_ref": "b"}, {"binding_ref": "ef"}, {"binding_ref": "et"}]}}
+  ],
+  "then": [
+    {"emit": "ShiftCost", "fields": {"employee_id": {"binding_ref": "e"}, "bucket": {"binding_ref": "b"}, "base_amount": {"call": ["decimal_mul", [{"binding_ref": "r"}, {"binding_ref": "h"}]]}}}
+  ]
+}

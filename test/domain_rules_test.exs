@@ -43,19 +43,39 @@ defmodule RulesEngine.DomainRulesTest do
       assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "effective-payrate-selection rule parses correctly" do
+    test "effective-payrate-selection rule matches expected JSON structure" do
       dsl_content = read_dsl_fixture("effective_payrate_selection.rule")
-      assert_rule_valid(dsl_content)
+      expected_json = read_json_fixture("effective_payrate_selection.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "holiday-premium-global rule parses correctly" do
+    test "holiday-premium-global rule matches expected JSON structure" do
       dsl_content = read_dsl_fixture("holiday_premium_global.rule")
-      assert_rule_valid(dsl_content)
+      expected_json = read_json_fixture("holiday_premium_global.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "holiday-premium-city-override rule parses correctly" do
+    test "holiday-premium-city-override rule matches expected JSON structure" do
       dsl_content = read_dsl_fixture("holiday_premium_city_override.rule")
-      assert_rule_valid(dsl_content)
+      expected_json = read_json_fixture("holiday_premium_city_override.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
+    end
+
+    test "overtime-weekly-general rule matches expected JSON structure" do
+      dsl_content = read_dsl_fixture("overtime_weekly_general.rule")
+      expected_json = read_json_fixture("overtime_weekly_general.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
+    end
+
+    test "overtime-weekly-tenant-exception rule matches expected JSON structure" do
+      dsl_content = read_dsl_fixture("overtime_weekly_tenant_exception.rule")
+      expected_json = read_json_fixture("overtime_weekly_tenant_exception.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
     end
   end
 
@@ -74,9 +94,18 @@ defmodule RulesEngine.DomainRulesTest do
       assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "nurse-min-rest-between-shifts rule parses correctly" do
+    test "nurse-min-rest-between-shifts rule matches expected JSON structure" do
       dsl_content = read_dsl_fixture("nurse_min_rest_between_shifts.rule")
-      assert_rule_valid(dsl_content)
+      expected_json = read_json_fixture("nurse_min_rest_between_shifts.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
+    end
+
+    test "minimum-wage rule matches expected JSON structure" do
+      dsl_content = read_dsl_fixture("min_wage.rule")
+      expected_json = read_json_fixture("min-wage.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
     end
   end
 
@@ -88,38 +117,50 @@ defmodule RulesEngine.DomainRulesTest do
       assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "base_cost rule parses correctly" do
+    test "base_cost rule matches expected JSON structure" do
       dsl_content = read_dsl_fixture("base_cost.rule")
-      assert_rule_valid(dsl_content)
+      expected_json = read_json_fixture("base-cost.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "estimate-overtime-bucket rule parses correctly" do
+    test "estimate-overtime-bucket rule matches expected JSON structure" do
       dsl_content = read_dsl_fixture("estimate_overtime_bucket.rule")
-      assert_rule_valid(dsl_content)
+      expected_json = read_json_fixture("estimate_overtime_bucket.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
+    end
+
+    test "taxes_and_benefits rule matches expected JSON structure" do
+      dsl_content = read_dsl_fixture("taxes_and_benefits.rule")
+      expected_json = read_json_fixture("taxes-and-benefits.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
     end
   end
 
   describe "Tenant-Specific Domain Rules" do
-    test "tenant-shift-premium-night rule parses correctly" do
+    test "tenant-shift-premium-night rule matches expected JSON structure" do
       dsl_content = read_dsl_fixture("tenant_shift_premium_night.rule")
-      assert_rule_valid(dsl_content)
+      expected_json = read_json_fixture("tenant_shift_premium_night.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
     end
 
-    test "tenant-approved-timesheets-only rule parses correctly" do
+    test "tenant-approved-timesheets-only rule matches expected JSON structure" do
       dsl_content = read_dsl_fixture("tenant_approved_timesheets_only.rule")
-      assert_rule_valid(dsl_content)
+      expected_json = read_json_fixture("tenant_approved_timesheets_only.json")
+
+      assert_rule_matches_json(dsl_content, expected_json)
     end
   end
 
-  describe "Complex Accumulation Rules" do
-    test "overtime-weekly-general simplified rule structure is valid" do
-      dsl_content = read_dsl_fixture("overtime_weekly_general.rule")
-      assert_rule_valid(dsl_content)
-    end
+  describe "Additional Domain Rules" do
+    test "set-membership rule matches expected JSON structure" do
+      dsl_content = read_dsl_fixture("set_membership.rule")
+      expected_json = read_json_fixture("set_membership.json")
 
-    test "taxes_and_benefits simplified rule structure is valid" do
-      dsl_content = read_dsl_fixture("taxes_and_benefits.rule")
-      assert_rule_valid(dsl_content)
+      assert_rule_matches_json(dsl_content, expected_json)
     end
   end
 
@@ -183,24 +224,6 @@ defmodule RulesEngine.DomainRulesTest do
     end
   end
 
-  # Helper function to validate rule syntax and parsing
-  defp assert_rule_valid(dsl_content) do
-    case Parser.parse(dsl_content) do
-      {:ok, ast, _warnings} ->
-        assert is_list(ast)
-        assert length(ast) >= 1
-
-        # Validate basic rule structure
-        [rule] = ast
-        assert Map.has_key?(rule, :name)
-        assert Map.has_key?(rule, :when)
-        assert Map.has_key?(rule, :then)
-
-      {:error, errors} ->
-        flunk("Rule failed to parse: #{inspect(errors)}")
-    end
-  end
-
   # Helper function to validate rule matches expected JSON structure
   defp assert_rule_matches_json(dsl_content, expected_json) do
     case Parser.parse(dsl_content) do
@@ -216,18 +239,56 @@ defmodule RulesEngine.DomainRulesTest do
 
       {:error, errors} ->
         flunk("Rule failed to parse: #{inspect(errors)}")
+
+      other ->
+        flunk("Unexpected parse result: #{inspect(other)}")
     end
   end
 
-  # Transform parsed AST to JSON-like structure for comparison
+  # Transform parsed AST to JSON-like structure for comparison  
   defp transform_rule_to_json(rule) do
+    case rule do
+      %{name: name, salience: {:when, _} = when_clause, then: then_clause} ->
+        # Rule without explicit salience - salience field contains the when clause
+        %{
+          "name" => name,
+          "salience" => 0,
+          "when" => transform_when_clauses(when_clause),
+          "then" => transform_then_clauses(then_clause)
+        }
+
+      %{name: name, salience: salience, when: when_clause, then: then_clause} ->
+        # Rule with explicit salience
+        %{
+          "name" => name,
+          "salience" => salience || 0,
+          "when" => transform_when_clauses(when_clause),
+          "then" => transform_then_clauses(then_clause)
+        }
+
+      other ->
+        # Debug output for unexpected structure
+        IO.inspect(other, label: "Unexpected rule structure")
+
+        %{
+          "name" => "unknown",
+          "salience" => 0,
+          "when" => [],
+          "then" => []
+        }
+    end
+  end
+
+  defp transform_rule_to_json(%{name: name, when: when_clause, then: then_clause}) do
     %{
-      "name" => rule.name,
-      "salience" => rule.salience || 0,
-      "when" => transform_when_clauses(rule.when),
-      "then" => transform_then_clauses(rule.then)
+      "name" => name,
+      "salience" => 0,
+      "when" => transform_when_clauses(when_clause),
+      "then" => transform_then_clauses(then_clause)
     }
   end
+
+  defp transform_when_clauses(nil), do: []
 
   defp transform_when_clauses({:when, clauses}) do
     Enum.map(clauses, &transform_when_clause/1)
@@ -244,6 +305,8 @@ defmodule RulesEngine.DomainRulesTest do
   defp transform_when_clause({:guard, expr}) do
     %{"guard" => transform_value(expr)}
   end
+
+  defp transform_then_clauses(nil), do: []
 
   defp transform_then_clauses({:then, clauses}) do
     Enum.map(clauses, &transform_then_clause/1)

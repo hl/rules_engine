@@ -1,0 +1,11 @@
+{
+  "name": "tenant-shift-premium-night",
+  "salience": 40,
+  "when": [
+    {"binding": "shift", "type": "ScheduledShift", "fields": {"employee_id": {"binding_ref": "e"}, "start_at": {"binding_ref": "s"}, "end_at": {"binding_ref": "f"}, "location": {"binding_ref": "loc"}}},
+    {"guard": {"between": [{"binding_ref": "s"}, {"datetime": "2025-01-01T22:00:00Z"}, {"datetime": "2025-01-02T05:00:00Z"}]}}
+  ],
+  "then": [
+    {"emit": "PayLine", "fields": {"employee_id": {"binding_ref": "e"}, "period_key": {"call": ["to_day", [{"binding_ref": "s"}]]}, "component": ":premium", "hours": {"call": ["time_between", [{"binding_ref": "s"}, {"binding_ref": "f"}, ":hours"]]}, "rate": 1.2}}
+  ]
+}

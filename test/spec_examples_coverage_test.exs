@@ -41,13 +41,13 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
         domain: :payroll,
         salience: 40,
         description: "Night shift premium for tenant-specific time windows",
-        has_json_fixture: false
+        has_json_fixture: true
       },
       "tenant-approved-timesheets-only" => %{
         domain: :processing,
         salience: 90,
         description: "Processing gate for approved timesheets only",
-        has_json_fixture: false
+        has_json_fixture: true
       },
 
       # From dsl_examples.md - Decision table style
@@ -63,7 +63,7 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
         domain: :payroll,
         salience: 80,
         description: "Select effective pay rate for timesheet entries",
-        has_json_fixture: false
+        has_json_fixture: true
       },
 
       # From dsl_examples.md - Weekly overtime (simplified for parser compatibility)
@@ -71,13 +71,13 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
         domain: :payroll,
         salience: 30,
         description: "Weekly overtime calculation (simplified version)",
-        has_json_fixture: false
+        has_json_fixture: true
       },
       "overtime-weekly-tenant-exception" => %{
         domain: :payroll,
         salience: 95,
         description: "Tenant-specific weekly overtime exception (simplified)",
-        has_json_fixture: false
+        has_json_fixture: true
       },
 
       # From dsl_examples.md - Location layering
@@ -85,13 +85,13 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
         domain: :payroll,
         salience: 20,
         description: "Global holiday premium calculation",
-        has_json_fixture: false
+        has_json_fixture: true
       },
       "holiday-premium-city-override" => %{
         domain: :payroll,
         salience: 85,
         description: "City-specific holiday premium override",
-        has_json_fixture: false
+        has_json_fixture: true
       },
 
       # From dsl_examples.md - Org-type compliance
@@ -99,7 +99,7 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
         domain: :compliance,
         salience: 65,
         description: "Minimum rest period between nursing shifts",
-        has_json_fixture: false
+        has_json_fixture: true
       },
 
       # From dsl_examples.md - Cost estimation
@@ -107,7 +107,7 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
         domain: :cost_estimation,
         salience: 25,
         description: "Estimate overtime costs by bucket",
-        has_json_fixture: false
+        has_json_fixture: true
       },
 
       # From wage_cost_estimation.md
@@ -117,17 +117,30 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
         description: "Calculate shift hours for cost estimation",
         has_json_fixture: true
       },
-      "base_cost" => %{
+      "base-cost" => %{
         domain: :cost_estimation,
         salience: 250,
         description: "Calculate base cost from shift hours and rates",
-        has_json_fixture: false
+        has_json_fixture: true
       },
-      "taxes_and_benefits" => %{
+      "taxes-and-benefits" => %{
         domain: :cost_estimation,
         salience: 150,
         description: "Calculate taxes and benefits costs (simplified)",
-        has_json_fixture: false
+        has_json_fixture: true
+      },
+      # Additional fixtures not in original specs
+      "min-wage" => %{
+        domain: :compliance,
+        salience: 0,
+        description: "Basic minimum wage validation example",
+        has_json_fixture: true
+      },
+      "set-membership" => %{
+        domain: :general,
+        salience: 5,
+        description: "Set membership testing example",
+        has_json_fixture: true
       }
     }
 

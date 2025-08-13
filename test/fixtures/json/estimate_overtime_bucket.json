@@ -1,0 +1,12 @@
+{
+  "name": "estimate-overtime-bucket",
+  "salience": 25,
+  "when": [
+    {"binding": "est", "type": "CostEstimate", "fields": {"scope": ":employee", "scope_id": {"binding_ref": "e"}, "bucket": {"binding_ref": "b"}, "hours": {"binding_ref": "h"}, "base_amount": {"binding_ref": "base"}}},
+    {"binding": "policy", "type": "OvertimePolicy", "fields": {"period": ":weekly", "threshold_hours": {"binding_ref": "t"}, "multiplier": {"binding_ref": "m"}}},
+    {"guard": {"cmp": [">", {"binding_ref": "h"}, {"binding_ref": "t"}]}}
+  ],
+  "then": [
+    {"emit": "CostEstimate", "fields": {"scope": ":employee", "scope_id": {"binding_ref": "e"}, "bucket": {"binding_ref": "b"}, "overtime_amount": {"call": ["decimal_multiply", [{"call": ["decimal_subtract", [{"binding_ref": "h"}, {"binding_ref": "t"}]]}, {"binding_ref": "m"}]]}, "total_amount": {"call": ["decimal_add", [{"binding_ref": "base"}, {"call": ["decimal_multiply", [{"call": ["decimal_subtract", [{"binding_ref": "h"}, {"binding_ref": "t"}]]}, {"binding_ref": "m"}]]}]]}}}
+  ]
+}

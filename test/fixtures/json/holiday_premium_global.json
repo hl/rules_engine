@@ -1,0 +1,11 @@
+{
+  "name": "holiday-premium-global",
+  "salience": 20,
+  "when": [
+    {"binding": "shift", "type": "ScheduledShift", "fields": {"employee_id": {"binding_ref": "e"}, "start_at": {"binding_ref": "s"}, "end_at": {"binding_ref": "f"}, "location": {"binding_ref": "loc"}}},
+    {"binding": "hol", "type": "HolidayCalendar", "fields": {"location": {"binding_ref": "loc"}, "date": {"binding_ref": "d"}, "premium_multiplier": {"binding_ref": "m"}}}
+  ],
+  "then": [
+    {"emit": "PayLine", "fields": {"employee_id": {"binding_ref": "e"}, "period_key": {"call": ["bucket", [":day", {"binding_ref": "s"}]]}, "component": ":holiday_premium", "hours": {"call": ["time_between", [{"binding_ref": "s"}, {"binding_ref": "f"}, ":hours"]]}, "rate": {"binding_ref": "m"}}}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "nurse-min-rest-between-shifts",
+  "salience": 65,
+  "when": [
+    {"binding": "prev", "type": "ScheduledShift", "fields": {"employee_id": {"binding_ref": "e"}, "end_at": {"binding_ref": "f"}, "role": "RN"}},
+    {"binding": "next", "type": "ScheduledShift", "fields": {"employee_id": {"binding_ref": "e"}, "start_at": {"binding_ref": "s"}, "role": "RN"}},
+    {"guard": {"and": [{"cmp": [">", {"binding_ref": "s"}, {"binding_ref": "f"}]}, {"cmp": ["<", {"call": ["time_between", [{"binding_ref": "f"}, {"binding_ref": "s"}, ":hours"]]}, {"call": ["dec", ["8"]]}]}]}}
+  ],
+  "then": [
+    {"emit": "ComplianceViolation", "fields": {"employee_id": {"binding_ref": "e"}, "period_key": {"call": ["bucket", [":day", {"binding_ref": "s"}]]}, "code": "REST_SHORTFALL", "severity": ":high", "details": "Less than 8h between shifts"}}
+  ]
+}

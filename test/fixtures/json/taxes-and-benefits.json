@@ -1,0 +1,11 @@
+{
+  "name": "taxes_and_benefits",
+  "salience": 150,
+  "when": [
+    {"binding": "prof", "type": "EmployeeProfile", "fields": {"employee_id": {"binding_ref": "e"}, "health_insurance_cost_per_period": {"binding_ref": "hi"}, "fica_tax_rate": {"binding_ref": "fica"}, "unemployment_tax_rate": {"binding_ref": "u"}}},
+    {"binding": "cost", "type": "ShiftCost", "fields": {"employee_id": {"binding_ref": "e"}, "bucket": {"binding_ref": "b"}, "base_amount": {"binding_ref": "ba"}}}
+  ],
+  "then": [
+    {"emit": "CostEstimate", "fields": {"scope": ":employee", "scope_id": {"binding_ref": "e"}, "bucket": {"binding_ref": "b"}, "base_amount": {"binding_ref": "ba"}, "benefits_amount": {"binding_ref": "hi"}, "tax_amount": {"call": ["decimal_add", [{"call": ["decimal_mul", [{"binding_ref": "ba"}, {"binding_ref": "fica"}]]}, {"call": ["decimal_mul", [{"binding_ref": "ba"}, {"binding_ref": "u"}]]}]]}, "total_amount": {"call": ["decimal_add", [{"call": ["decimal_add", [{"binding_ref": "ba"}, {"binding_ref": "hi"}]]}, {"call": ["decimal_add", [{"call": ["decimal_mul", [{"binding_ref": "ba"}, {"binding_ref": "fica"}]]}, {"call": ["decimal_mul", [{"binding_ref": "ba"}, {"binding_ref": "u"}]]}]]}]]}}}
+  ]
+}

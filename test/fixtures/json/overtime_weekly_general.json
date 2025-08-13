@@ -1,0 +1,12 @@
+{
+  "name": "overtime-weekly-general",
+  "salience": 30,
+  "when": [
+    {"binding": "ts", "type": "TimesheetEntry", "fields": {"employee_id": {"binding_ref": "e"}, "start_at": {"binding_ref": "s"}, "end_at": {"binding_ref": "f"}, "approved": true}},
+    {"binding": "policy", "type": "OvertimePolicy", "fields": {"period": ":weekly", "threshold_hours": {"binding_ref": "t"}, "multiplier": {"binding_ref": "m"}}},
+    {"guard": {"cmp": [">", {"call": ["time_between", [{"binding_ref": "s"}, {"binding_ref": "f"}, ":hours"]]}, {"binding_ref": "t"}]}}
+  ],
+  "then": [
+    {"emit": "PayLine", "fields": {"employee_id": {"binding_ref": "e"}, "period_key": {"call": ["bucket", [":week", {"binding_ref": "s"}]]}, "component": ":overtime", "hours": {"call": ["decimal_subtract", [{"call": ["time_between", [{"binding_ref": "s"}, {"binding_ref": "f"}, ":hours"]]}, {"binding_ref": "t"}]]}, "rate": {"binding_ref": "m"}}}
+  ]
+}

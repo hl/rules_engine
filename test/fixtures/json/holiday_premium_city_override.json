@@ -1,0 +1,11 @@
+{
+  "name": "holiday-premium-city-override",
+  "salience": 85,
+  "when": [
+    {"binding": "shift", "type": "ScheduledShift", "fields": {"employee_id": {"binding_ref": "e"}, "start_at": {"binding_ref": "s"}, "end_at": {"binding_ref": "f"}, "location": "US/CA/SF"}},
+    {"binding": "hol", "type": "HolidayCalendar", "fields": {"location": "US/CA/SF", "date": {"binding_ref": "d"}, "premium_multiplier": {"binding_ref": "m"}}}
+  ],
+  "then": [
+    {"emit": "PayLine", "fields": {"employee_id": {"binding_ref": "e"}, "period_key": {"call": ["bucket", [":day", {"binding_ref": "s"}]]}, "component": ":holiday_premium", "hours": {"call": ["time_between", [{"binding_ref": "s"}, {"binding_ref": "f"}, ":hours"]]}, "rate": {"call": ["decimal_add", [{"binding_ref": "m"}, {"call": ["dec", ["0.25"]]}]]}}}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "effective-payrate-selection",
+  "salience": 80,
+  "when": [
+    {"binding": "ts", "type": "TimesheetEntry", "fields": {"employee_id": {"binding_ref": "e"}, "start_at": {"binding_ref": "s"}}},
+    {"binding": "rate", "type": "PayRate", "fields": {"employee_id": {"binding_ref": "e"}, "effective_from": {"binding_ref": "ef"}, "effective_to": {"binding_ref": "et"}, "base_rate": {"binding_ref": "r"}}},
+    {"guard": {"and": [{"cmp": [">=", {"binding_ref": "s"}, {"binding_ref": "ef"}]}, {"or": [{"cmp": ["==", {"binding_ref": "et"}, "nil"]}, {"cmp": ["<", {"binding_ref": "s"}, {"binding_ref": "et"}]}]}]}}
+  ],
+  "then": [
+    {"emit": "SelectedRate", "fields": {"employee_id": {"binding_ref": "e"}, "at": {"binding_ref": "s"}, "rate": {"binding_ref": "r"}}}
+  ]
+}

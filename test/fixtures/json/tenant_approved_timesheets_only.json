@@ -1,0 +1,11 @@
+{
+  "name": "tenant-approved-timesheets-only",
+  "salience": 90,
+  "when": [
+    {"binding": "ts", "type": "TimesheetEntry", "fields": {"employee_id": {"binding_ref": "e"}, "approved": {"binding_ref": "a"}, "start_at": {"binding_ref": "s"}, "end_at": {"binding_ref": "f"}}},
+    {"guard": {"cmp": ["==", {"binding_ref": "a"}, true]}}
+  ],
+  "then": [
+    {"emit": "ProcessingGate", "fields": {"kind": ":timesheet_ok", "employee_id": {"binding_ref": "e"}, "token": {"call": ["get_id", [{"binding_ref": "ts"}]]}}}
+  ]
+}

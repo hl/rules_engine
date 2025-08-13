@@ -1,0 +1,12 @@
+{
+  "name": "minimum-wage",
+  "salience": 0,
+  "when": [
+    {"binding": "shift", "type": "Shift", "fields": {"employee_id": {"binding_ref": "e"}, "hours": {"binding_ref": "h"}, "hourly_rate": {"binding_ref": "w"}, "date": {"binding_ref": "d"}, "jurisdiction": {"binding_ref": "j"}}},
+    {"binding": "law", "type": "Jurisdiction", "fields": {"code": {"binding_ref": "j"}, "min_wage": {"binding_ref": "m"}}},
+    {"guard": {"and": [{"cmp": ["<", {"binding_ref": "w"}, {"binding_ref": "m"}]}, {"between": [{"binding_ref": "d"}, {"date": "2025-01-01"}, {"date": "2025-12-31"}]}]}}
+  ],
+  "then": [
+    {"emit": "ComplianceViolation", "fields": {"kind": "min_wage_breach", "employee_id": {"binding_ref": "e"}, "deficit_per_hour": {"arith": ["-", {"binding_ref": "m"}, {"binding_ref": "w"}]}}}
+  ]
+}
