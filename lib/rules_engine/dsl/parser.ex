@@ -304,6 +304,7 @@ defmodule RulesEngine.DSL.Parser do
         parsec(:exists_stmt),
         parsec(:not_exists_stmt),
         parsec(:not_fact_stmt),
+        parsec(:accumulate_stmt),
         parsec(:fact_pattern)
       ])
     )
@@ -317,6 +318,85 @@ defmodule RulesEngine.DSL.Parser do
     |> repeat(parsec(:when_line) |> ignore(optional(newline)))
     |> ignore(optional(parsec(:ws)))
     |> tag(:when)
+  )
+
+  # accumulate statement
+  defcombinatorp(
+    :accumulate_stmt,
+    optional(parsec(:ident) |> ignore(parsec(:colon)))
+    |> ignore(string("accumulate"))
+    |> ignore(parsec(:ws))
+    |> ignore(string("from"))
+    |> ignore(parsec(:ws))
+    |> concat(parsec(:fact_pattern))
+    |> ignore(parsec(:ws))
+    |> ignore(string("group_by"))
+    |> ignore(parsec(:ws))
+    |> concat(parsec(:group_list))
+    |> ignore(parsec(:ws))
+    |> ignore(string("reduce"))
+    |> ignore(parsec(:ws))
+    |> concat(parsec(:reduce_list))
+    |> optional(
+      ignore(parsec(:ws))
+      |> ignore(string("having"))
+      |> ignore(parsec(:ws))
+      |> concat(parsec(:guard_expr))
+      |> tag(:having)
+    )
+    |> reduce({__MODULE__, :reduce_accumulate, []})
+  )
+
+  defcombinatorp(
+    :group_list,
+    parsec(:value_expr)
+    |> repeat(ignore(parsec(:comma)) |> concat(parsec(:value_expr)))
+    |> tag(:group_by)
+  )
+
+  defcombinatorp(
+    :reduce_list,
+    parsec(:reduce_item)
+    |> repeat(ignore(parsec(:comma)) |> concat(parsec(:reduce_item)))
+    |> tag(:reducers)
+  )
+
+  defcombinatorp(
+    :reduce_item,
+    parsec(:ident)
+    |> ignore(parsec(:colon))
+    |> concat(parsec(:reducer_call))
+    |> reduce({__MODULE__, :reduce_named_reducer, []})
+  )
+
+  defcombinatorp(
+    :reducer_call,
+    choice([
+      ignore(string("sum"))
+      |> ignore(parsec(:lparen))
+      |> concat(parsec(:value_expr))
+      |> ignore(parsec(:rparen))
+      |> tag(:sum),
+      ignore(string("count"))
+      |> ignore(parsec(:lparen))
+      |> ignore(parsec(:rparen))
+      |> tag(:count),
+      ignore(string("min"))
+      |> ignore(parsec(:lparen))
+      |> concat(parsec(:value_expr))
+      |> ignore(parsec(:rparen))
+      |> tag(:min),
+      ignore(string("max"))
+      |> ignore(parsec(:lparen))
+      |> concat(parsec(:value_expr))
+      |> ignore(parsec(:rparen))
+      |> tag(:max),
+      ignore(string("avg"))
+      |> ignore(parsec(:lparen))
+      |> concat(parsec(:value_expr))
+      |> ignore(parsec(:rparen))
+      |> tag(:avg)
+    ])
   )
 
   # then_block lines
@@ -512,6 +592,43 @@ defmodule RulesEngine.DSL.Parser do
 
     {:emit, type, fields}
   end
+
+  # reducers for accumulate
+  def reduce_accumulate(parts) do
+    {binding, parts} =
+      case parts do
+        [binding | rest] when is_binary(binding) -> {binding, rest}
+        other -> {nil, other}
+      end
+
+    [{:fact, _b, _t, _f} = from | rest] = parts
+
+    {group_by, rest} =
+      case rest do
+        [{:group_by, gb} | tail] -> {gb, tail}
+        tail -> {[], tail}
+      end
+
+    {reducers, rest} =
+      case rest do
+        [{:reducers, rs} | tail] -> {rs, tail}
+        tail -> {[], tail}
+      end
+
+    having =
+      case rest do
+        [having: expr] -> expr
+        _ -> nil
+      end
+
+    {:accumulate, binding, from, group_by, reducers, having}
+  end
+
+  def reduce_named_reducer([name, {:sum, [expr]}]), do: {to_string(name), {:sum, expr}}
+  def reduce_named_reducer([name, {:count}]), do: {to_string(name), {:count, nil}}
+  def reduce_named_reducer([name, {:min, [expr]}]), do: {to_string(name), {:min, expr}}
+  def reduce_named_reducer([name, {:max, [expr]}]), do: {to_string(name), {:max, expr}}
+  def reduce_named_reducer([name, {:avg, [expr]}]), do: {to_string(name), {:avg, expr}}
 
   # reducers for exists/not
   def reduce_exists([{:fact, _b, _t, _f}] = [fact]), do: {:exists, fact}
