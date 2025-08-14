@@ -5,7 +5,7 @@ defmodule RulesEngine.MixProject do
     [
       app: :rules_engine,
       version: "0.1.0",
-      elixir: "~> 1.19-rc",
+      elixir: "~> 1.19 or ~> 1.19-rc",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       test_coverage: [tool: ExCoveralls]
