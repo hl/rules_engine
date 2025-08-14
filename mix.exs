@@ -8,7 +8,23 @@ defmodule RulesEngine.MixProject do
       elixir: "~> 1.19 or ~> 1.19-rc",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      test_coverage: [tool: ExCoveralls]
+      test_coverage: [tool: ExCoveralls],
+      description: "Pragmatic DSL-to-IR rules engine for Elixir",
+      source_url: "https://github.com/your-org/rules_engine",
+      docs: [
+        main: "readme",
+        extras: ["README.md", "SPECS.md"],
+        groups_for_extras: [
+          DSL: Path.wildcard("specs/dsl*.md"),
+          Compiler: ["specs/compiler_ir.md", "specs/codegen_modules.md"],
+          Engine: [
+            "specs/agenda.md",
+            "specs/refraction.md",
+            "specs/performance.md",
+            "specs/tracing.md"
+          ]
+        ]
+      ]
     ]
   end
 
