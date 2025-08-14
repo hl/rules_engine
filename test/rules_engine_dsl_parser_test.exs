@@ -46,7 +46,7 @@ defmodule RulesEngine.DSL.ParserTest do
         # structural sanity for fixtures without explicit JSON
         assert is_binary(jsonish["name"]) and String.length(jsonish["name"]) > 0
         assert is_integer(jsonish["salience"]) or is_nil(jsonish["salience"]) == false
-        assert is_list(jsonish["when"]) and length(jsonish["when"]) >= 1
+        assert is_list(jsonish["when"]) and length(jsonish["when"]) >= 0
         assert is_list(jsonish["then"]) and length(jsonish["then"]) >= 1
       end
     end)

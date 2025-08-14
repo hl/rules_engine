@@ -17,7 +17,7 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
   - [x] Accumulate/group-by syntax as per specs/accumulation.md
   - [x] More boolean/collection ops (overlap, starts_with, contains) if part of DSL and Predicates
 - [x] Implement parser recovery and human-readable errors (file:line, caret context)
-- [ ] Normalise AST format (consistent then/when tuple handling) and add type for AST nodes
+- [x] Normalise AST format (consistent then/when tuple handling) and add type for AST nodes
 - [ ] Validation improvements:
   - [ ] Cross-check bindings across all guard contexts (including nested and/or)
   - [ ] Validate accumulate reducers and having clauses (types, names)

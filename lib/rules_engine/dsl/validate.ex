@@ -21,17 +21,6 @@ defmodule RulesEngine.DSL.Validate do
   defp validate_rule(%{name: name, when: {:when, whens}, then: {:then, thens}}, schemas),
     do: validate_rule_core(name, whens, thens, schemas)
 
-  defp validate_rule(%{name: name, salience: {:when, whens}} = r, schemas) do
-    # Some ASTs may store then as {:then, list}
-    then =
-      case r.then do
-        {:then, thens} -> thens
-        other -> other
-      end
-
-    validate_rule_core(name, whens, then, schemas)
-  end
-
   defp validate_rule_core(name, whens, thens, schemas) do
     thens =
       case thens do
@@ -69,6 +58,7 @@ defmodule RulesEngine.DSL.Validate do
       thens
       |> List.wrap()
       |> Enum.flat_map(&validate_action(&1, bindings, [name, :then]))
+      |> Enum.reject(&is_nil/1)
 
     type_field_errors ++ guard_errors ++ action_errors
   end
@@ -105,7 +95,6 @@ defmodule RulesEngine.DSL.Validate do
   defp validate_action({:emit, _type, fields}, bindings, path) do
     fields
     |> Enum.flat_map(fn {_k, v} -> validate_term(v, bindings, path ++ [:action]) end)
-    |> Enum.reject(&is_nil/1)
   end
 
   # validate_guard grouped clauses (all heads contiguous)

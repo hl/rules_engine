@@ -4,7 +4,16 @@ defmodule RulesEngine.DSL.Parser do
   """
   import NimbleParsec
 
-  @type ast :: list()
+  @typedoc "AST for a single rule"
+  @type rule_node :: %{
+          required(:name) => String.t(),
+          required(:salience) => integer(),
+          required(:when) => {:when, list()},
+          required(:then) => {:then, list()}
+        }
+
+  @typedoc "Program AST: list of rule nodes"
+  @type ast :: [rule_node]
 
   # Basic lexemes
   whitespace = ascii_string([?\t, ?\f, ?\r, ?\n, ?\v, 32], min: 1)
@@ -705,6 +714,22 @@ defmodule RulesEngine.DSL.Parser do
         _ -> false
       end)
 
-    %{name: name, salience: salience, when: when_block, then: then_block}
+    # Normalise salience to integer (default 0) and ensure {:when, list}/{:then, list}
+    when_norm =
+      case when_block do
+        {:when, l} -> {:when, l}
+        nil -> {:when, []}
+        other -> other
+      end
+
+    then_norm =
+      case then_block do
+        {:then, l} -> {:then, l}
+        nil -> {:then, []}
+        other -> other
+      end
+
+    sal_norm = if is_integer(salience), do: salience, else: 0
+    %{name: name, salience: sal_norm, when: when_norm, then: then_norm}
   end
 end
