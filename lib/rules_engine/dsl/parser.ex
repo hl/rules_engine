@@ -267,6 +267,33 @@ defmodule RulesEngine.DSL.Parser do
     |> reduce({__MODULE__, :reduce_action, []})
   )
 
+  # exists/not statements
+  defcombinatorp(
+    :exists_stmt,
+    ignore(string("exists"))
+    |> ignore(parsec(:ws))
+    |> concat(parsec(:fact_pattern))
+    |> reduce({__MODULE__, :reduce_exists, []})
+  )
+
+  defcombinatorp(
+    :not_exists_stmt,
+    ignore(string("not"))
+    |> ignore(parsec(:ws))
+    |> ignore(string("exists"))
+    |> ignore(parsec(:ws))
+    |> concat(parsec(:fact_pattern))
+    |> reduce({__MODULE__, :reduce_not_exists, []})
+  )
+
+  defcombinatorp(
+    :not_fact_stmt,
+    ignore(string("not"))
+    |> ignore(parsec(:ws))
+    |> concat(parsec(:fact_pattern))
+    |> reduce({__MODULE__, :reduce_not_fact, []})
+  )
+
   # when_block lines
   defcombinatorp(
     :when_line,
@@ -274,6 +301,9 @@ defmodule RulesEngine.DSL.Parser do
     |> concat(
       choice([
         parsec(:guard_stmt),
+        parsec(:exists_stmt),
+        parsec(:not_exists_stmt),
+        parsec(:not_fact_stmt),
         parsec(:fact_pattern)
       ])
     )
@@ -482,6 +512,11 @@ defmodule RulesEngine.DSL.Parser do
 
     {:emit, type, fields}
   end
+
+  # reducers for exists/not
+  def reduce_exists([{:fact, _b, _t, _f}] = [fact]), do: {:exists, fact}
+  def reduce_not_exists([{:fact, _b, _t, _f}] = [fact]), do: {:not, {:exists, fact}}
+  def reduce_not_fact([{:fact, _b, _t, _f}] = [fact]), do: {:not, fact}
 
   # Rule reducer builds AST node
   def reduce_rule([name | rest]) do

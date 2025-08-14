@@ -84,6 +84,9 @@ defmodule RulesEngine.DSL.ParserTest do
   end
 
   defp transform_when({:guard, expr}), do: %{"guard" => transform_value(expr)}
+  defp transform_when({:exists, fact}), do: %{"exists" => transform_when(fact)}
+  defp transform_when({:not, {:exists, fact}}), do: %{"not_exists" => transform_when(fact)}
+  defp transform_when({:not, fact}), do: %{"not" => transform_when(fact)}
 
   defp transform_then({:emit, type, fields}) do
     %{
