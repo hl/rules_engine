@@ -15,7 +15,7 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 - [ ] Extend grammar to cover:
   - [x] Negation/exists in when: not/exists forms (grammar + AST tags)
   - [x] Accumulate/group-by syntax as per specs/accumulation.md
-  - [ ] More boolean/collection ops (overlap, starts_with, contains) if part of DSL and Predicates
+  - [x] More boolean/collection ops (overlap, starts_with, contains) if part of DSL and Predicates
 - [ ] Implement parser recovery and human-readable errors (file:line, caret context)
 - [ ] Normalise AST format (consistent then/when tuple handling) and add type for AST nodes
 - [ ] Validation improvements:
