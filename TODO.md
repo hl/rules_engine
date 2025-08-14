@@ -79,12 +79,12 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 
 ## 7. Tooling and CI
 
-- [ ] Update .github/workflows/ci.yml to run:
-  - [ ] mix deps.get
-  - [ ] mix format --check-formatted
-  - [ ] mix compile --warnings-as-errors
-  - [ ] mix credo --strict
-  - [ ] mix dialyzer (cache plt)
+- [x] Update .github/workflows/ci.yml to run:
+  - [x] mix deps.get
+  - [x] mix format --check-formatted
+  - [x] mix compile --warnings-as-errors
+  - [x] mix credo --strict
+  - [x] mix dialyzer (cache plt)
   - [ ] mix test and MIX_ENV=test mix test --cover
 - [ ] Add dialyzer configuration for types in DSL modules
 - [ ] Add pre-commit hooks suggestion (format, credo)

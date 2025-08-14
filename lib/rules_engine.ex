@@ -127,7 +127,7 @@ defmodule RulesEngine do
   """
   @spec version() :: String.t()
   def version do
-    Application.spec(:rules_engine, :vsn) |> to_string()
+    to_string(Application.spec(:rules_engine, :vsn))
   end
 
   @doc """

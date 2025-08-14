@@ -146,7 +146,7 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
 
     test "all spec examples are covered by DSL fixtures" do
       dsl_fixture_dir = Path.join([@fixture_dir, "dsl"])
-      dsl_fixture_files = File.ls!(dsl_fixture_dir) |> Enum.map(&String.replace(&1, ".rule", ""))
+      dsl_fixture_files = Enum.map(File.ls!(dsl_fixture_dir), &String.replace(&1, ".rule", ""))
 
       # Check coverage - convert rule names to fixture format
       spec_rule_names = Map.keys(@spec_examples)
@@ -209,8 +209,7 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
 
       # Test each JSON fixture has corresponding DSL fixture
       json_files =
-        File.ls!(json_fixture_dir)
-        |> Enum.filter(&String.ends_with?(&1, ".json"))
+        Enum.filter(File.ls!(json_fixture_dir), &String.ends_with?(&1, ".json"))
 
       for json_file <- json_files do
         json_base = String.replace(json_file, ".json", "")
@@ -242,7 +241,7 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
     end
 
     test "each domain has adequate rule coverage" do
-      by_domain = @spec_examples |> Enum.group_by(fn {_name, meta} -> meta.domain end)
+      by_domain = Enum.group_by(@spec_examples, fn {_name, meta} -> meta.domain end)
 
       payroll_count = length(by_domain[:payroll] || [])
       compliance_count = length(by_domain[:compliance] || [])
@@ -275,7 +274,7 @@ defmodule RulesEngine.SpecExamplesCoverageTest do
   describe "Fixture File Validation" do
     test "all fixture files can be read and have expected structure" do
       fixture_dir = Path.join([@fixture_dir, "dsl"])
-      fixture_files = File.ls!(fixture_dir) |> Enum.filter(&String.ends_with?(&1, ".rule"))
+      fixture_files = Enum.filter(File.ls!(fixture_dir), &String.ends_with?(&1, ".rule"))
 
       for fixture_file <- fixture_files do
         fixture_path = Path.join(fixture_dir, fixture_file)

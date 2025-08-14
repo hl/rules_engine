@@ -13,7 +13,7 @@ defmodule RulesEngine.DSL.E2EIRTest do
 
     # Validate against specs schema
     schema_path = Path.expand("../specs/ir.schema.json", __DIR__)
-    schema = File.read!(schema_path) |> Jason.decode!()
+    schema = Jason.decode!(File.read!(schema_path))
     {:ok, root} = JSV.build(schema)
     assert {:ok, _casted} = JSV.validate(ir, root)
 
