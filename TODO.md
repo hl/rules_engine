@@ -85,7 +85,7 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
   - [x] mix compile --warnings-as-errors
   - [x] mix credo --strict
   - [x] mix dialyzer (cache plt)
-  - [ ] mix test and MIX_ENV=test mix test --cover
+  - [x] mix test and MIX_ENV=test mix test --cover
 - [ ] Add dialyzer configuration for types in DSL modules
 - [ ] Add pre-commit hooks suggestion (format, credo)
 
