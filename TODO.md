@@ -6,9 +6,9 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 
 - [x] Replace README placeholder with real overview, usage, and examples (install, quickstart, compile DSL to IR, link to specs)
 - [x] Pin supported Elixir version (1.19 stable) and CI matrix; remove rc tag in mix.exs once stable
-- [ ] Ensure all public modules have @moduledoc and functions have @doc/@specs
+- [x] Ensure all public modules have @moduledoc and functions have @doc/@specs
 - [x] Add license file and project metadata (description, source_url, docs) in mix.exs
-- [ ] Enable strict compiler flags in mix.exs (warnings_as_errors in CI env) and ensure zero warnings
+- [x] Enable strict compiler flags in mix.exs (warnings_as_errors in CI env) and ensure zero warnings
 
 ## 1. DSL parsing and validation
 
