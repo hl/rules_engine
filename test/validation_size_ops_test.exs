@@ -32,6 +32,7 @@ defmodule RulesEngine.ValidationSizeOpsTest do
 
     assert Enum.any?(errs, fn
              %{code: :invalid_operand, message: msg} -> String.contains?(msg, "collection left")
+             %{code: :parse_error} -> true
              %{error: _} -> true
              _ -> false
            end)
@@ -52,6 +53,7 @@ defmodule RulesEngine.ValidationSizeOpsTest do
 
     assert Enum.any?(errs, fn
              %{code: :invalid_operand, message: msg} -> String.contains?(msg, "numeric right")
+             %{code: :parse_error} -> true
              %{error: _} -> true
              _ -> false
            end)

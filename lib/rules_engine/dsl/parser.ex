@@ -455,9 +455,56 @@ defmodule RulesEngine.DSL.Parser do
       {:ok, result, _, _, _, _} ->
         {:ok, result, []}
 
-      {:error, reason, rest, ctx, loc, byte_offset} ->
-        {:error, [%{error: reason, rest: rest, ctx: ctx, loc: loc, byte_offset: byte_offset}]}
+      {:error, reason, _rest, _ctx, _loc, byte_offset} ->
+        {line, col} = byte_offset_to_line_col(source, byte_offset)
+        {snippet, caret} = build_snippet(source, line, col)
+
+        {:error,
+         [
+           %{
+             code: :parse_error,
+             message: to_string(reason),
+             line: line,
+             column: col,
+             snippet: snippet,
+             caret: caret
+           }
+         ]}
     end
+  end
+
+  @doc false
+  @spec byte_offset_to_line_col(String.t(), non_neg_integer()) ::
+          {non_neg_integer(), non_neg_integer()}
+  defp byte_offset_to_line_col(src, offset) do
+    {line, col, _acc} =
+      src
+      |> String.graphemes()
+      |> Enum.reduce_while({1, 1, 0}, fn ch, {ln, cl, acc} ->
+        if acc >= offset do
+          {:halt, {ln, cl, acc}}
+        else
+          acc2 = acc + byte_size(ch)
+
+          cond do
+            ch == "\n" -> {:cont, {ln + 1, 1, acc2}}
+            true -> {:cont, {ln, cl + 1, acc2}}
+          end
+        end
+      end)
+
+    {line, col}
+  end
+
+  @doc false
+  @spec build_snippet(String.t(), non_neg_integer(), non_neg_integer()) ::
+          {String.t(), String.t()}
+  defp build_snippet(src, line, col) do
+    lines = String.split(src, "\n", trim: false)
+    idx = max(line - 1, 0)
+    current = Enum.at(lines, idx) || ""
+    caret = String.duplicate(" ", max(col - 1, 0)) <> "^"
+    {current, caret}
   end
 
   # Reducers
