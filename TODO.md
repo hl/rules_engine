@@ -58,9 +58,10 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 
 ## 4. Fact schemas
 
-- [ ] Provide canonical fact schemas per specs/fact_schemas.md (structs or maps with enforced IDs)
-- [ ] Add schema registry module and loader (allow custom schemas per tenant)
-- [ ] Integrate schemas into validation (types and allowed fields)
+- [x] Schema registry module with external configuration support
+- [x] Remove built-in domain-specific schemas from library
+- [x] Integrate external schemas into validation (types and allowed fields)
+- [x] LLM integration support via `list_schemas/0` and `schema_details/0`
 
 ## 5. Standard library of predicates and calculators
 

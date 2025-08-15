@@ -34,11 +34,34 @@ See `test/fixtures/dsl/*.rule` alongside expected JSON in `test/fixtures/json/*.
 
 ## Installation
 
-This project isn’t published to Hex yet. For now, depend via Git in `mix.exs`:
+This project isn't published to Hex yet. For now, depend via Git in `mix.exs`:
 
 ```elixir
 {:rules_engine, git: "https://github.com/<your-org>/rules_engine", tag: "v0.0.0"}
 ```
+
+### Schema Configuration
+
+The rules engine requires external fact schema configuration for validation. Configure a schema registry in your application:
+
+```elixir
+# config/config.exs
+config :rules_engine,
+  schema_registry: MyApp.SchemaRegistry
+
+# Define your schema provider:
+defmodule MyApp.SchemaRegistry do
+  def schemas do
+    %{
+      "Employee" => %{"fields" => ["id", "name", "role", "department"]},
+      "Timesheet" => %{"fields" => ["id", "employee_id", "hours", "date"]},
+      "PayLine" => %{"fields" => ["employee_id", "amount", "pay_date"]}
+    }
+  end
+end
+```
+
+For more details, see `specs/fact_schemas.md`.
 
 ## DSL overview
 

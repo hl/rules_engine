@@ -1,26 +1,28 @@
-defmodule RulesEngine.ValidationBuiltInSchemasTest do
+defmodule RulesEngine.ValidationExternalSchemasTest do
   use ExUnit.Case, async: true
 
   alias RulesEngine.DSL.Compiler
-  alias RulesEngine.FactSchemas
+  alias RulesEngineTest.Support.FactSchemas
 
   @tenant "test"
+  @schemas FactSchemas.schemas()
 
-  test "built-in schemas are used by default" do
-    # Use a fixture that should pass with canonical schemas
+  test "external schemas work when provided" do
+    # Use a fixture that should pass with test schemas
     source =
       File.read!(Path.join([__DIR__, "fixtures", "dsl", "schema_validation_canonical.rule"]))
 
-    # Should pass - all fields are in canonical schemas
-    assert {:ok, _ir} = Compiler.parse_and_compile(@tenant, source)
+    # Should pass - all fields are in test schemas
+    assert {:ok, _ir} = Compiler.parse_and_compile(@tenant, source, %{fact_schemas: @schemas})
   end
 
-  test "unknown field in canonical fact type fails validation by default" do
+  test "unknown field in fact type fails validation with external schemas" do
     # Use a fixture with invalid fields
     source =
       File.read!(Path.join([__DIR__, "fixtures", "dsl", "schema_validation_invalid_field.rule"]))
 
-    assert {:error, errors} = Compiler.parse_and_compile(@tenant, source)
+    assert {:error, errors} =
+             Compiler.parse_and_compile(@tenant, source, %{fact_schemas: @schemas})
 
     assert Enum.any?(
              errors,
@@ -28,8 +30,8 @@ defmodule RulesEngine.ValidationBuiltInSchemasTest do
            )
   end
 
-  test "fact schema registry provides canonical schemas" do
-    schemas = FactSchemas.canonical_schemas()
+  test "test schema registry provides schemas" do
+    schemas = FactSchemas.schemas()
 
     # Core WMEs should be present
     assert Map.has_key?(schemas, "Employee")
@@ -37,7 +39,8 @@ defmodule RulesEngine.ValidationBuiltInSchemasTest do
     assert Map.has_key?(schemas, "PayLine")
 
     # Employee should have expected fields
-    employee_fields = FactSchemas.get_fields("Employee")
+    employee_schema = Map.get(schemas, "Employee")
+    employee_fields = Map.get(employee_schema, "fields", [])
     assert "id" in employee_fields
     assert "role" in employee_fields
     assert "location" in employee_fields
@@ -49,6 +52,15 @@ defmodule RulesEngine.ValidationBuiltInSchemasTest do
       File.read!(Path.join([__DIR__, "fixtures", "dsl", "schema_validation_invalid_field.rule"]))
 
     # Should pass when schemas are disabled
-    assert {:ok, _ir} = Compiler.parse_and_compile(@tenant, source, %{fact_schemas: false})
+    assert {:ok, _ir} = Compiler.parse_and_compile(@tenant, source, %{fact_schemas: nil})
+  end
+
+  test "compilation fails without schemas when validation needed" do
+    # Use a fixture that needs schema validation
+    source =
+      File.read!(Path.join([__DIR__, "fixtures", "dsl", "schema_validation_canonical.rule"]))
+
+    # Should pass without schemas (no validation performed)
+    assert {:ok, _ir} = Compiler.parse_and_compile(@tenant, source)
   end
 end

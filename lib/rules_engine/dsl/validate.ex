@@ -10,20 +10,7 @@ defmodule RulesEngine.DSL.Validate do
 
   @spec validate(list(), map()) :: {:ok, list()} | {:error, [error()]}
   def validate(ast, opts) when is_list(ast) do
-    schemas =
-      case Map.get(opts, :fact_schemas) do
-        nil ->
-          # Use canonical schemas by default
-          RulesEngine.FactSchemas.canonical_schemas()
-
-        custom_schemas when is_map(custom_schemas) ->
-          # Merge custom schemas with canonical ones (custom takes precedence)
-          Map.merge(RulesEngine.FactSchemas.canonical_schemas(), custom_schemas)
-
-        false ->
-          # Explicitly disable schema validation
-          nil
-      end
+    schemas = Map.get(opts, :fact_schemas)
 
     errors =
       Enum.flat_map(ast, &validate_rule(&1, schemas))
@@ -317,8 +304,8 @@ defmodule RulesEngine.DSL.Validate do
 
   # Validate emit action field names against schema
   defp validate_emit_fields(type, fields, schemas, path) do
-    # If schemas are disabled (nil), skip validation
-    if schemas == nil do
+    # If schemas are disabled (nil or false), skip validation
+    if schemas == nil or schemas == false do
       []
     else
       case Map.get(schemas, type) do

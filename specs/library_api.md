@@ -16,6 +16,7 @@ Public, library-native interfaces for compiling rules and running tenant engines
 
 Options
 - calculators: [module] — whitelist of calculator modules usable in guards/reducers
+- fact_schemas: map | nil — fact schema definitions for validation, nil disables validation
 - strict?: boolean — fail on warnings
 
 ## Pure execution (no processes)

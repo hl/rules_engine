@@ -822,6 +822,10 @@ defmodule RulesEngine.DSL.Compiler do
   defp term(list) when is_list(list) and length(list) == 1 and is_binary(hd(list)),
     do: %{"type" => "string", "value" => hd(list)}
 
+  # Allow list-wrapped integer literals that may appear from parser reductions
+  defp term(list) when is_list(list) and length(list) == 1 and is_integer(hd(list)),
+    do: %{"type" => "number", "value" => hd(list)}
+
   defp term(bin) when is_binary(bin), do: %{"type" => "string", "value" => bin}
 
   defp binding_ref(binding, field), do: %{"binding" => binding, "field" => field}

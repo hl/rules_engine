@@ -1,19 +1,18 @@
-defmodule RulesEngine.FactSchemas do
+defmodule RulesEngineTest.Support.FactSchemas do
   @moduledoc """
-  Built-in fact schema registry providing canonical fact schemas per specs/fact_schemas.md.
+  Test fact schema registry providing schemas used in test fixtures.
 
-  This module defines the standard fact types used across the rules engine, including
-  core WMEs (Working Memory Elements) and derived facts produced by rules.
+  This module contains schemas for all fact types used across the test suite,
+  extracted from the original built-in fact schemas to support test validation.
   """
 
   @doc """
-  Returns the canonical fact schemas as defined in specs/fact_schemas.md.
-  Each schema contains field definitions and metadata for validation.
+  Returns the test fact schemas used across the test suite.
   """
-  @spec canonical_schemas() :: map()
-  def canonical_schemas do
+  @spec schemas() :: map()
+  def schemas do
     %{
-      # Core WMEs
+      # Core WMEs for payroll/compliance testing
       "Employee" => %{
         "fields" => [
           "id",
@@ -196,7 +195,7 @@ defmodule RulesEngine.FactSchemas do
         ]
       },
 
-      # Test/example types
+      # Test/example types for validation tests
       "User" => %{
         "fields" => [
           "name",
@@ -212,7 +211,10 @@ defmodule RulesEngine.FactSchemas do
       "A" => %{
         "fields" => [
           "id",
-          "a_id"
+          "a_id",
+          "x",
+          "y",
+          "z"
         ]
       },
       "B" => %{
@@ -244,34 +246,5 @@ defmodule RulesEngine.FactSchemas do
         ]
       }
     }
-  end
-
-  @doc """
-  Get schema for a specific fact type.
-  Returns nil if the type is not found in the canonical schemas.
-  """
-  @spec get_schema(String.t()) :: map() | nil
-  def get_schema(fact_type) when is_binary(fact_type) do
-    Map.get(canonical_schemas(), fact_type)
-  end
-
-  @doc """
-  Get allowed fields for a specific fact type.
-  Returns empty list if the type is not found.
-  """
-  @spec get_fields(String.t()) :: [String.t()]
-  def get_fields(fact_type) when is_binary(fact_type) do
-    case get_schema(fact_type) do
-      %{"fields" => fields} -> fields
-      _ -> []
-    end
-  end
-
-  @doc """
-  Validate if a field is allowed for a given fact type.
-  """
-  @spec field_allowed?(String.t(), String.t()) :: boolean()
-  def field_allowed?(fact_type, field_name) when is_binary(fact_type) and is_binary(field_name) do
-    field_name in get_fields(fact_type)
   end
 end
