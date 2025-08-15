@@ -40,30 +40,53 @@ The engine supports single-fact filtering (Alpha network) and multi-fact joins/a
 
 ## Specs Index
 
+### Core Engine Specifications
 | Topic | Path | Summary |
 | --- | --- | --- |
 | RETE Overview | [specs/rete_overview.md](specs/rete_overview.md) | Concepts, Alpha/Beta networks, agenda, refraction |
 | Library API | [specs/library_api.md](specs/library_api.md) | Public functions for compile/run/tracing |
-| Architecture | [specs/architecture.md](specs/architecture.md) | Library runtime, per-tenant GenServers, network representation |
-| Architecture (Library + OTP) | [specs/architecture.md](specs/architecture.md) | Engine runtime, per-tenant GenServers, optional partitioning |
-| Calculators | [specs/calculators.md](specs/calculators.md) | Deterministic helpers for guards/reducers |
-| DSL Examples | [specs/dsl_examples.md](specs/dsl_examples.md) | Domain examples (payroll, compliance, estimation) |
+| Architecture | [specs/architecture.md](specs/architecture.md) | Engine runtime, per-tenant GenServers, optional partitioning |
+
+### Rule Language & Compilation
+| Topic | Path | Summary |
+| --- | --- | --- |
 | Rule DSL | [specs/dsl.md](specs/dsl.md) | Textual DSL and compilation |
 | DSL EBNF | [specs/dsl_ebnf.md](specs/dsl_ebnf.md) | Formal grammar |
-| IR Schema | [specs/ir.schema.json](specs/ir.schema.json) | JSON schema for compiled IR |
+| DSL Examples | [specs/dsl_examples.md](specs/dsl_examples.md) | Domain examples (payroll, compliance, estimation) |
 | Compiler IR | [specs/compiler_ir.md](specs/compiler_ir.md) | Node graph and internal IR |
+| IR Schema | [specs/ir.schema.json](specs/ir.schema.json) | JSON schema for compiled IR |
 | Parser Contract | [specs/parser_contract.md](specs/parser_contract.md) | Parser-to-compiler contract |
+| Advanced Predicates | [specs/advanced_predicates.md](specs/advanced_predicates.md) | Complex predicate operations and optimizations |
+| Codegen Modules | [specs/codegen_modules.md](specs/codegen_modules.md) | Code generation and optimization strategies |
+
+### Data & Execution Model
+| Topic | Path | Summary |
+| --- | --- | --- |
 | Fact Schemas | [specs/fact_schemas.md](specs/fact_schemas.md) | Canonical WME structures and IDs |
 | Temporal Semantics | [specs/temporal_semantics.md](specs/temporal_semantics.md) | Effective time ranges and filtering |
 | Accumulation | [specs/accumulation.md](specs/accumulation.md) | Group-by nodes and incremental aggregates |
+| Calculators | [specs/calculators.md](specs/calculators.md) | Deterministic helpers for guards/reducers |
+
+### Runtime Behaviour
+| Topic | Path | Summary |
+| --- | --- | --- |
 | Agenda Policy | [specs/agenda.md](specs/agenda.md) | Conflict resolution, salience, recency |
 | Refraction Policy | [specs/refraction.md](specs/refraction.md) | Duplicate-fire suppression semantics |
 | Error Handling | [specs/error_handling.md](specs/error_handling.md) | Failures, retries, guardrails |
 | Tracing & Introspection | [specs/tracing.md](specs/tracing.md) | Events, callbacks, introspection |
 | Performance | [specs/performance.md](specs/performance.md) | Throughput, memory, latency targets and benchmarks |
-| Domain Examples — Payroll | [specs/payroll.md](specs/payroll.md) | Example rules and facts |
-| Domain Examples — Compliance | [specs/compliance.md](specs/compliance.md) | Example rules and facts |
-| Domain Examples — Wage Cost Estimation | [specs/wage_cost_estimation.md](specs/wage_cost_estimation.md) | Example rules and facts |
+
+### Domain Examples
+| Topic | Path | Summary |
+| --- | --- | --- |
+| Payroll Processing | [specs/payroll.md](specs/payroll.md) | Example rules and facts for payroll calculations |
+| Compliance Checking | [specs/compliance.md](specs/compliance.md) | Example rules and facts for compliance validation |
+| Wage Cost Estimation | [specs/wage_cost_estimation.md](specs/wage_cost_estimation.md) | Example rules and facts for cost estimation |
+
+### Extensions & Distribution
+| Topic | Path | Summary |
+| --- | --- | --- |
+| Distributed Links | [specs/distributed_links.md](specs/distributed_links.md) | Multi-node coordination and scaling patterns |
 These detailed specs enumerate facts, constraints, rule shapes, agenda needs, and outputs for each domain and cross-cutting concern.
 
 ## Next Steps
