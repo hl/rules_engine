@@ -28,13 +28,11 @@ defmodule RulesEngine.Engine.WorkingMemory do
   @type t :: %__MODULE__{
           facts: %{fact_id() => fact()},
           type_index: %{fact_type() => MapSet.t()},
-          alpha_memories: %{term() => AlphaMemory.t()},
-          beta_memories: %{term() => BetaMemory.t()},
-          token_tables: %{term() => TokenTable.t()},
+          alpha_memories: %{term() => RulesEngine.Engine.AlphaMemory.t()},
+          beta_memories: %{term() => RulesEngine.Engine.BetaMemory.t()},
+          token_tables: %{term() => RulesEngine.Engine.TokenTable.t()},
           partition_count: pos_integer()
         }
-
-  # alias RulesEngine.Engine.{AlphaMemory, BetaMemory, TokenTable}
 
   @doc """
   Create new working memory with specified partition count.

@@ -36,7 +36,7 @@ defmodule RulesEngine.Engine do
   use GenServer
   require Logger
 
-  alias RulesEngine.Engine.{State, WorkingMemory, Agenda, Tracing}
+  alias RulesEngine.Engine.{Activation, Agenda, State, Tracing, WorkingMemory}
 
   # Client API
 
@@ -214,29 +214,24 @@ defmodule RulesEngine.Engine do
 
   @impl true
   def handle_call({:assert, facts, opts}, _from, state) do
-    with {:ok, new_state, outputs} <- do_assert(state, facts, opts) do
-      maybe_run_agenda(new_state, outputs, opts)
-    else
+    case do_assert(state, facts, opts) do
+      {:ok, new_state, outputs} -> maybe_run_agenda(new_state, outputs, opts)
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
   @impl true
   def handle_call({:modify, facts, opts}, _from, state) do
-    with {:ok, new_state, outputs} <- do_modify(state, facts, opts) do
-      maybe_run_agenda(new_state, outputs, opts)
-    else
+    case do_modify(state, facts, opts) do
+      {:ok, new_state, outputs} -> maybe_run_agenda(new_state, outputs, opts)
       {:error, reason} -> {:reply, {:error, reason}, state}
     end
   end
 
   @impl true
   def handle_call({:retract, ids, opts}, _from, state) do
-    with {:ok, new_state, outputs} <- do_retract(state, ids, opts) do
-      maybe_run_agenda(new_state, outputs, opts)
-    else
-      {:error, reason} -> {:reply, {:error, reason}, state}
-    end
+    {:ok, new_state, outputs} = do_retract(state, ids, opts)
+    maybe_run_agenda(new_state, outputs, opts)
   end
 
   @impl true
@@ -389,7 +384,7 @@ defmodule RulesEngine.Engine do
 
   defp fire_activation(state, activation) do
     # Check refraction - don't fire if already fired with same token signature
-    refraction_key = RulesEngine.Engine.Activation.refraction_key(activation)
+    refraction_key = Activation.refraction_key(activation)
 
     # Trace activation lifecycle
     new_tracer =
@@ -421,20 +416,7 @@ defmodule RulesEngine.Engine do
         )
 
       # Trace derived facts if any
-      final_tracer =
-        if state.tracing_enabled and length(outputs.derived) > 0 do
-          Enum.reduce(outputs.derived, intermediate_state.tracer, fn derived_fact, tracer_acc ->
-            Tracing.trace(
-              tracer_acc,
-              :derive,
-              activation.production_id,
-              %{derived_fact: derived_fact},
-              nil
-            )
-          end)
-        else
-          intermediate_state.tracer
-        end
+      final_tracer = trace_derived_facts(state, outputs, intermediate_state, activation)
 
       # Add to refraction store and remove from agenda
       new_refraction_store = MapSet.put(intermediate_state.refraction_store, refraction_key)
@@ -523,7 +505,7 @@ defmodule RulesEngine.Engine do
       type: :refraction,
       timestamp: DateTime.utc_now(),
       production_id: activation.production_id,
-      token_signature: RulesEngine.Engine.Activation.token_signature(activation),
+      token_signature: Activation.token_signature(activation),
       message: "Activation refracted - already fired with same token"
     }
   end
@@ -535,8 +517,8 @@ defmodule RulesEngine.Engine do
           type: :rule_fire,
           timestamp: DateTime.utc_now(),
           production_id: activation.production_id,
-          bindings: RulesEngine.Engine.Activation.bindings(activation),
-          facts: RulesEngine.Engine.Activation.wmes(activation)
+          bindings: Activation.bindings(activation),
+          facts: Activation.wmes(activation)
         }
       ]
 
@@ -553,6 +535,22 @@ defmodule RulesEngine.Engine do
       base_events ++ derived_events
     else
       []
+    end
+  end
+
+  defp trace_derived_facts(state, outputs, intermediate_state, activation) do
+    if state.tracing_enabled and length(outputs.derived) > 0 do
+      Enum.reduce(outputs.derived, intermediate_state.tracer, fn derived_fact, tracer_acc ->
+        Tracing.trace(
+          tracer_acc,
+          :derive,
+          activation.production_id,
+          %{derived_fact: derived_fact},
+          nil
+        )
+      end)
+    else
+      intermediate_state.tracer
     end
   end
 end

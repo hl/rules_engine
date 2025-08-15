@@ -520,9 +520,10 @@ defmodule RulesEngine.DSL.Parser do
         else
           acc2 = acc + byte_size(ch)
 
-          cond do
-            ch == "\n" -> {:cont, {ln + 1, 1, acc2}}
-            true -> {:cont, {ln, cl + 1, acc2}}
+          if ch == "\n" do
+            {:cont, {ln + 1, 1, acc2}}
+          else
+            {:cont, {ln, cl + 1, acc2}}
           end
         end
       end)
@@ -727,42 +728,44 @@ defmodule RulesEngine.DSL.Parser do
 
   # Rule reducer builds AST node
   def reduce_rule([name | rest]) do
-    {salience, rest2} =
-      case rest do
-        [s | tail] when is_integer(s) -> {s, tail}
-        other -> {nil, other}
-      end
-
+    {salience, rest2} = extract_salience(rest)
     parts = Enum.flat_map(rest2, &List.wrap/1)
+    when_block = find_when_block(parts)
 
-    when_block =
-      Enum.find(parts, fn
-        {:when, _} -> true
-        _ -> false
-      end)
-
-    then_block =
-      Enum.find(parts, fn
-        {:then, _} -> true
-        _ -> false
-      end)
-
-    # Normalise salience to integer (default 0) and ensure {:when, list}/{:then, list}
-    when_norm =
-      case when_block do
-        {:when, l} -> {:when, l}
-        nil -> {:when, []}
-        other -> other
-      end
-
-    then_norm =
-      case then_block do
-        {:then, l} -> {:then, l}
-        nil -> {:then, []}
-        other -> other
-      end
-
+    then_block = find_then_block(parts)
+    when_norm = normalize_block(when_block, :when)
+    then_norm = normalize_block(then_block, :then)
     sal_norm = if is_integer(salience), do: salience, else: 0
+
     %{name: name, salience: sal_norm, when: when_norm, then: then_norm}
+  end
+
+  defp extract_salience(rest) do
+    case rest do
+      [s | tail] when is_integer(s) -> {s, tail}
+      other -> {nil, other}
+    end
+  end
+
+  defp find_when_block(parts) do
+    Enum.find(parts, fn
+      {:when, _} -> true
+      _ -> false
+    end)
+  end
+
+  defp find_then_block(parts) do
+    Enum.find(parts, fn
+      {:then, _} -> true
+      _ -> false
+    end)
+  end
+
+  defp normalize_block(block, type) do
+    case block do
+      {^type, l} -> {type, l}
+      nil -> {type, []}
+      other -> other
+    end
   end
 end

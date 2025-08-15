@@ -23,7 +23,7 @@ defmodule RulesEngine.AlphaNetworkTest do
     assert employee_node["id"] == "alpha_Employee"
     assert length(employee_node["tests"]) == 2
 
-    # Should have TimesheetEntry alpha node  
+    # Should have TimesheetEntry alpha node
     ts_node = Enum.find(alpha_network, &(&1["type"] == "TimesheetEntry"))
     assert ts_node["id"] == "alpha_TimesheetEntry"
     assert length(ts_node["tests"]) == 2

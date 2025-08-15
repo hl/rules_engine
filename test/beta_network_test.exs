@@ -50,7 +50,7 @@ defmodule RulesEngine.BetaNetworkTest do
     beta_network = ir["network"]["beta"]
 
     # Should create no beta nodes for single-fact rules
-    assert length(beta_network) == 0
+    assert Enum.empty?(beta_network)
   end
 
   test "beta network handles complex multi-way joins" do

@@ -401,53 +401,51 @@ defmodule RulesEngine.DSL.Compiler do
   defp validate_ir_round_trip(ir, schema_root) do
     # Perform round-trip JSON serialization to catch schema issues that only
     # appear after real-world serialization/deserialization cycles
-    try do
-      # Step 1: Serialize to JSON (as would happen in real usage)
-      json_string = Jason.encode!(ir)
+    # Step 1: Serialize to JSON (as would happen in real usage)
+    json_string = Jason.encode!(ir)
 
-      # Step 2: Deserialize back to Elixir data (as would happen when loading)
-      round_tripped_ir = Jason.decode!(json_string)
+    # Step 2: Deserialize back to Elixir data (as would happen when loading)
+    round_tripped_ir = Jason.decode!(json_string)
 
-      # Step 3: Validate the round-tripped version
-      case JSV.validate(round_tripped_ir, schema_root) do
-        {:ok, _} ->
-          # Step 4: Check for any significant data changes in round-trip
-          check_round_trip_integrity(ir, round_tripped_ir)
+    # Step 3: Validate the round-tripped version
+    case JSV.validate(round_tripped_ir, schema_root) do
+      {:ok, _} ->
+        # Step 4: Check for any significant data changes in round-trip
+        check_round_trip_integrity(ir, round_tripped_ir)
 
-        {:error, errors} ->
-          {:error,
-           [
-             %{
-               code: :schema_validation_failed,
-               stage: :round_trip_validation,
-               message: "IR failed validation after JSON round-trip serialization",
-               errors: errors
-             }
-           ]}
-      end
-    rescue
-      error in Jason.EncodeError ->
+      {:error, errors} ->
         {:error,
          [
            %{
-             code: :json_serialization_failed,
-             stage: :round_trip_encoding,
-             message: "IR contains data that cannot be serialized to JSON",
-             details: Exception.message(error)
-           }
-         ]}
-
-      error in Jason.DecodeError ->
-        {:error,
-         [
-           %{
-             code: :json_deserialization_failed,
-             stage: :round_trip_decoding,
-             message: "Serialized IR cannot be deserialized from JSON",
-             details: Exception.message(error)
+             code: :schema_validation_failed,
+             stage: :round_trip_validation,
+             message: "IR failed validation after JSON round-trip serialization",
+             errors: errors
            }
          ]}
     end
+  rescue
+    error in Jason.EncodeError ->
+      {:error,
+       [
+         %{
+           code: :json_serialization_failed,
+           stage: :round_trip_encoding,
+           message: "IR contains data that cannot be serialized to JSON",
+           details: Exception.message(error)
+         }
+       ]}
+
+    error in Jason.DecodeError ->
+      {:error,
+       [
+         %{
+           code: :json_deserialization_failed,
+           stage: :round_trip_decoding,
+           message: "Serialized IR cannot be deserialized from JSON",
+           details: Exception.message(error)
+         }
+       ]}
   end
 
   defp check_round_trip_integrity(original, round_tripped) do
@@ -611,14 +609,26 @@ defmodule RulesEngine.DSL.Compiler do
     [
       %{
         "op" => "not_exists",
-        "left" => %{"binding" => binding || "", "field" => ""},
+        "left" => %{"binding" => binding, "field" => ""},
         "right" => %{"type" => "string", "value" => type},
         "extra" => nil
       }
     ]
   end
 
-  # Handle not pattern with anonymous binding (parser produces different structure)  
+  defp compile_beta_join_from_when({:not, {:fact, nil, type, _fields}})
+       when is_binary(type) do
+    [
+      %{
+        "op" => "not_exists",
+        "left" => %{"binding" => "", "field" => ""},
+        "right" => %{"type" => "string", "value" => type},
+        "extra" => nil
+      }
+    ]
+  end
+
+  # Handle not pattern with anonymous binding (parser produces different structure)
   defp compile_beta_join_from_when({:not, {:fact, type, {field, field_value}, _fields}})
        when is_binary(type) do
     [
@@ -639,7 +649,19 @@ defmodule RulesEngine.DSL.Compiler do
     [
       %{
         "op" => "exists",
-        "left" => %{"binding" => binding || "", "field" => ""},
+        "left" => %{"binding" => binding, "field" => ""},
+        "right" => %{"type" => "string", "value" => type},
+        "extra" => nil
+      }
+    ]
+  end
+
+  defp compile_beta_join_from_when({:exists, {:fact, nil, type, _fields}})
+       when is_binary(type) do
+    [
+      %{
+        "op" => "exists",
+        "left" => %{"binding" => "", "field" => ""},
         "right" => %{"type" => "string", "value" => type},
         "extra" => nil
       }
@@ -667,7 +689,19 @@ defmodule RulesEngine.DSL.Compiler do
     [
       %{
         "op" => "not_exists",
-        "left" => %{"binding" => binding || "", "field" => ""},
+        "left" => %{"binding" => binding, "field" => ""},
+        "right" => %{"type" => "string", "value" => type},
+        "extra" => nil
+      }
+    ]
+  end
+
+  defp compile_beta_join_from_when({:not, {:exists, {:fact, nil, type, _fields}}})
+       when is_binary(type) do
+    [
+      %{
+        "op" => "not_exists",
+        "left" => %{"binding" => "", "field" => ""},
         "right" => %{"type" => "string", "value" => type},
         "extra" => nil
       }

@@ -6,7 +6,7 @@ defmodule RulesEngine.Engine.State do
   for a single tenant engine instance.
   """
 
-  alias RulesEngine.Engine.{WorkingMemory, Agenda, Network, Tracing}
+  alias RulesEngine.Engine.{Agenda, Network, Tracing, WorkingMemory}
 
   defstruct [
     :tenant_key,

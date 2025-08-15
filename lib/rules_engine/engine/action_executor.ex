@@ -13,6 +13,8 @@ defmodule RulesEngine.Engine.ActionExecutor do
 
   require Logger
 
+  alias RulesEngine.Engine.Network
+
   alias RulesEngine.Engine.{Activation, Token}
 
   @type action :: %{
@@ -81,43 +83,41 @@ defmodule RulesEngine.Engine.ActionExecutor do
   @spec execute_single_action(state :: map(), action :: action(), activation :: Activation.t()) ::
           {map(), execution_result()}
   def execute_single_action(state, action, activation) do
-    try do
-      case action.type do
-        :emit ->
-          execute_emit_action(state, action, activation)
+    case action.type do
+      :emit ->
+        execute_emit_action(state, action, activation)
 
-        :call ->
-          execute_call_action(state, action, activation)
+      :call ->
+        execute_call_action(state, action, activation)
 
-        :log ->
-          execute_log_action(state, action, activation)
+      :log ->
+        execute_log_action(state, action, activation)
 
-        _ ->
-          error = %{
-            type: :unknown_action,
-            action_type: action.type,
-            message: "Unknown action type"
-          }
-
-          {state, %{derived_facts: [], side_effects: [], errors: [error]}}
-      end
-    rescue
-      exception ->
+      _ ->
         error = %{
-          type: :action_exception,
+          type: :unknown_action,
           action_type: action.type,
-          exception: Exception.message(exception),
-          stacktrace: __STACKTRACE__
+          message: "Unknown action type"
         }
 
         {state, %{derived_facts: [], side_effects: [], errors: [error]}}
     end
+  rescue
+    exception ->
+      error = %{
+        type: :action_exception,
+        action_type: action.type,
+        exception: Exception.message(exception),
+        stacktrace: __STACKTRACE__
+      }
+
+      {state, %{derived_facts: [], side_effects: [], errors: [error]}}
   end
 
   # Private Implementation
 
   defp get_production_node(network, production_id) do
-    RulesEngine.Engine.Network.get_production_node(network, production_id)
+    Network.get_production_node(network, production_id)
   end
 
   defp execute_emit_action(state, action, activation) do

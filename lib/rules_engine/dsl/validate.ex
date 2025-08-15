@@ -208,7 +208,9 @@ defmodule RulesEngine.DSL.Validate do
   defp validate_type_fields(_node, nil, _path), do: []
 
   defp validate_type_fields({:fact, _b, type, fields}, schemas, path) do
-    case Map.get(schemas || %{}, type) do
+    schemas = schemas || %{}
+
+    case Map.get(schemas, type) do
       nil ->
         []
 
@@ -327,18 +329,7 @@ defmodule RulesEngine.DSL.Validate do
         %{"fields" => allowed_fields} ->
           Enum.flat_map(fields, fn {field_name, _value} ->
             field_str = to_string(field_name)
-
-            if field_str in allowed_fields do
-              []
-            else
-              [
-                %{
-                  code: :unknown_field,
-                  message: "unknown field #{field_name} for #{type} in emit action",
-                  path: path ++ [type, field_name]
-                }
-              ]
-            end
+            validate_field(field_str, field_name, type, path, allowed_fields)
           end)
       end
     end
@@ -451,4 +442,18 @@ defmodule RulesEngine.DSL.Validate do
     do: true
 
   defp comparable_literal?(_), do: false
+
+  defp validate_field(field_str, field_name, type, path, allowed_fields) do
+    if field_str in allowed_fields do
+      []
+    else
+      [
+        %{
+          code: :unknown_field,
+          message: "unknown field #{field_name} for #{type} in emit action",
+          path: path ++ [type, field_name]
+        }
+      ]
+    end
+  end
 end
