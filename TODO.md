@@ -42,19 +42,19 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 
 ## 3. Engine runtime (OTP)
 
-- [ ] Define engine GenServer with:
-  - [ ] APIs: start/stop tenant, assert/modify/retract facts, run/step, reset, snapshot
-  - [ ] Working memory structures: alpha memories, beta memories, token tables, agenda queue
-  - [ ] Deterministic batch processing boundaries
-- [ ] Implement agenda policy module behaviour; default policy with salience + recency
-- [ ] Refraction store to avoid duplicate fires across stable inputs
-- [ ] Action RHS execution:
-  - [ ] Emit derived facts back into WM with lineage
-  - [ ] Optional callback hooks
-- [ ] Tracing bus:
-  - [ ] Node-level events (assert/retract, join, activation, fire)
-  - [ ] Token lineage, activation lifecycle events
-  - [ ] Pluggable subscribers
+- [x] Define engine GenServer with:
+  - [x] APIs: start/stop tenant, assert/modify/retract facts, run/step, reset, snapshot
+  - [x] Working memory structures: alpha memories, beta memories, token tables, agenda queue
+  - [x] Deterministic batch processing boundaries
+- [x] Implement agenda policy module behaviour; default policy with salience + recency
+- [x] Refraction store to avoid duplicate fires across stable inputs
+- [x] Action RHS execution:
+  - [x] Emit derived facts back into WM with lineage
+  - [x] Optional callback hooks
+- [x] Tracing bus:
+  - [x] Node-level events (assert/retract, join, activation, fire)
+  - [x] Token lineage, activation lifecycle events
+  - [x] Pluggable subscribers
 
 ## 4. Fact schemas
 

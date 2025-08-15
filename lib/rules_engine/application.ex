@@ -1,15 +1,15 @@
 defmodule RulesEngine.Application do
   # See https://hexdocs.pm/elixir/Application.html
   # for more information on OTP Applications
-  @moduledoc "Application supervision tree for RulesEngine (currently empty)."
+  @moduledoc "Application supervision tree for RulesEngine library."
 
   use Application
 
   @impl true
   def start(_type, _args) do
     children = [
-      # Starts a worker by calling: RulesEngine.Worker.start_link(arg)
-      # {RulesEngine.Worker, arg}
+      # Start the Registry for tenant engines
+      RulesEngine.Registry
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
