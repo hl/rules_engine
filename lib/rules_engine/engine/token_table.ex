@@ -25,11 +25,11 @@ defmodule RulesEngine.Engine.TokenTable do
   @type node_id :: term()
 
   @type t :: %__MODULE__{
-          node_id: node_id(),
-          tokens: MapSet.t(Token.t()),
-          children: [node_id()],
-          node_type: node_type(),
-          created_at: DateTime.t()
+          node_id: term(),
+          tokens: term(),
+          children: list(),
+          node_type: atom(),
+          created_at: term()
         }
 
   @doc """

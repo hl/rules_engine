@@ -514,21 +514,23 @@ defmodule RulesEngine.DSL.Parser do
     {line, col, _acc} =
       src
       |> String.graphemes()
-      |> Enum.reduce_while({1, 1, 0}, fn ch, {ln, cl, acc} ->
-        if acc >= offset do
-          {:halt, {ln, cl, acc}}
-        else
-          acc2 = acc + byte_size(ch)
-
-          if ch == "\n" do
-            {:cont, {ln + 1, 1, acc2}}
-          else
-            {:cont, {ln, cl + 1, acc2}}
-          end
-        end
-      end)
+      |> Enum.reduce_while({1, 1, 0}, &process_char_for_offset(&1, &2, offset))
 
     {line, col}
+  end
+
+  defp process_char_for_offset(ch, {ln, cl, acc}, offset) do
+    if acc >= offset do
+      {:halt, {ln, cl, acc}}
+    else
+      acc2 = acc + byte_size(ch)
+
+      if ch == "\n" do
+        {:cont, {ln + 1, 1, acc2}}
+      else
+        {:cont, {ln, cl + 1, acc2}}
+      end
+    end
   end
 
   @doc false

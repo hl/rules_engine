@@ -314,12 +314,16 @@ defmodule RulesEngine.DSL.Validate do
           []
 
         %{"fields" => allowed_fields} ->
-          Enum.flat_map(fields, fn {field_name, _value} ->
-            field_str = to_string(field_name)
-            validate_field(field_str, field_name, type, path, allowed_fields)
-          end)
+          validate_emit_field_list(fields, type, path, allowed_fields)
       end
     end
+  end
+
+  defp validate_emit_field_list(fields, type, path, allowed_fields) do
+    Enum.flat_map(fields, fn {field_name, _value} ->
+      field_str = to_string(field_name)
+      validate_field(field_str, field_name, type, path, allowed_fields)
+    end)
   end
 
   # Validate the from fact in accumulate statements

@@ -23,10 +23,10 @@ defmodule RulesEngine.Engine.BetaMemory do
 
   @type t :: %__MODULE__{
           memory_id: term(),
-          tokens: MapSet.t(Token.t()),
-          hash_indexes: %{term() => %{term() => MapSet.t(Token.t())}},
-          join_keys: [atom()],
-          created_at: DateTime.t()
+          tokens: term(),
+          hash_indexes: map(),
+          join_keys: list(),
+          created_at: term()
         }
 
   @doc """

@@ -155,15 +155,32 @@ defmodule RulesEngine.Engine.Agenda do
   # Private Implementation
 
   defp insert_by_priority(queue, activation, policy) do
-    # Convert to list, insert, sort, convert back
-    # This is not the most efficient but simple for now
-    # TODO: Use a proper priority queue implementation
+    # Use proper priority queue implementation with binary insertion
+    case :queue.is_empty(queue) do
+      true ->
+        :queue.in(activation, queue)
 
-    activations = :queue.to_list(queue)
-    new_activations = [activation | activations]
-    sorted_activations = Enum.sort(new_activations, &policy.compare/2)
+      false ->
+        insert_activation_in_order(queue, activation, policy, :queue.new())
+    end
+  end
 
-    :queue.from_list(sorted_activations)
+  defp insert_activation_in_order(queue, activation, policy, acc) do
+    case :queue.out(queue) do
+      {:empty, _} ->
+        :queue.in(activation, acc)
+
+      {{:value, current}, remaining} ->
+        case policy.compare(activation, current) do
+          true ->
+            # Activation has higher priority, insert here
+            :queue.join(acc, :queue.from_list([activation | :queue.to_list(queue)]))
+
+          false ->
+            # Continue searching for insertion point
+            insert_activation_in_order(remaining, activation, policy, :queue.in(current, acc))
+        end
+    end
   end
 
   defp remove_from_queue(queue, activation) do

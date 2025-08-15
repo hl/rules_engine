@@ -17,7 +17,7 @@ jobs:
       - name: Setup Elixir
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: '1.19'
+          elixir-version: '1.18'
           otp-version: '27'
 
       - name: Check formatting
@@ -35,7 +35,7 @@ jobs:
       - name: Setup Elixir
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: '1.19'
+          elixir-version: '1.18'
           otp-version: '27'
 
       - name: Restore dependencies cache
@@ -70,7 +70,7 @@ jobs:
       - name: Setup Elixir
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: '1.19'
+          elixir-version: '1.18'
           otp-version: '27'
 
       - name: Restore dependencies cache
@@ -92,50 +92,50 @@ jobs:
       - name: Run Credo
         run: mix credo --min-priority=high
 
-  # dialyzer:
-  #   name: Static Analysis (Dialyzer)
-  #   runs-on: ubuntu-latest
-  #   needs: compile
-  #   env:
-  #     MIX_ENV: dev
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
+  dialyzer:
+    name: Static Analysis (Dialyzer)
+    runs-on: ubuntu-latest
+    needs: compile
+    env:
+      MIX_ENV: dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-  #     - name: Setup Elixir
-  #       uses: erlef/setup-beam@v1
-  #       with:
-  #         elixir-version: '1.19'
-  #         otp-version: '27'
+      - name: Setup Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.18'
+          otp-version: '27'
 
-  #     - name: Restore dependencies cache
-  #       uses: actions/cache@v4
-  #       with:
-  #         path: |
-  #           deps
-  #           _build
-  #           ~/.mix
-  #           ~/.cache/rebar3
-  #           ~/.hex
-  #         key: deps-${{ runner.os }}-${{ hashFiles('mix.lock') }}
-  #         restore-keys: |
-  #           deps-${{ runner.os }}-
+      - name: Restore dependencies cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+            ~/.mix
+            ~/.cache/rebar3
+            ~/.hex
+          key: deps-${{ runner.os }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            deps-${{ runner.os }}-
 
-  #     - name: Restore PLT cache
-  #       uses: actions/cache@v4
-  #       with:
-  #         path: |
-  #           _build/${{ env.MIX_ENV }}/dialyxir_*.plt
-  #           _build/${{ env.MIX_ENV }}/dialyxir_*.plt.hash
-  #         key: plt-${{ runner.os }}-${{ env.MIX_ENV }}-${{ hashFiles('mix.lock') }}
-  #         restore-keys: |
-  #           plt-${{ runner.os }}-${{ env.MIX_ENV }}-
+      - name: Restore PLT cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            _build/${{ env.MIX_ENV }}/dialyxir_*.plt
+            _build/${{ env.MIX_ENV }}/dialyxir_*.plt.hash
+          key: plt-${{ runner.os }}-${{ env.MIX_ENV }}-${{ hashFiles('mix.lock') }}
+          restore-keys: |
+            plt-${{ runner.os }}-${{ env.MIX_ENV }}-
 
-  #     - name: Install dependencies
-  #       run: mix deps.get
+      - name: Install dependencies
+        run: mix deps.get
 
-  #     - name: Run Dialyzer
-  #       run: mix dialyzer
+      - name: Run Dialyzer
+        run: mix dialyzer
 
   test:
     name: Test
@@ -150,7 +150,7 @@ jobs:
       - name: Setup Elixir
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: '1.19'
+          elixir-version: '1.18'
           otp-version: '27'
 
       - name: Restore dependencies cache

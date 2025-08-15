@@ -5,7 +5,7 @@ defmodule RulesEngine.MixProject do
     [
       app: :rules_engine,
       version: "0.1.0",
-      elixir: "~> 1.19 or ~> 1.19-rc",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       test_coverage: [tool: ExCoveralls],
@@ -54,6 +54,7 @@ defmodule RulesEngine.MixProject do
       {:jsv, "~> 0.4"},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      # Static analysis with type checking
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.18", only: :test}
     ]

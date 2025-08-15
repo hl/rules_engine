@@ -2,7 +2,7 @@
 
 Build/lint/test
 
-- Install: Elixir (~> 1.19); deps: mix deps.get
+- Install: Elixir (~> 1.18); deps: mix deps.get
 - Compile: mix compile
 - Format check: mix format --check-formatted
 - Lint (0 warnings tolerated): mix compile --warnings-as-errors; static analysis: mix credo --strict; dialyzer: mix dialyzer

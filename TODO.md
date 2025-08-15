@@ -5,7 +5,7 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 ## 0. Immediate hygiene
 
 - [x] Replace README placeholder with real overview, usage, and examples (install, quickstart, compile DSL to IR, link to specs)
-- [x] Pin supported Elixir version (1.19 stable) and CI matrix; remove rc tag in mix.exs once stable
+- [x] Pin supported Elixir version (1.18 stable) and CI matrix; resolved Dialyzer issues
 - [x] Ensure all public modules have @moduledoc and functions have @doc/@specs
 - [x] Add license file and project metadata (description, source_url, docs) in mix.exs
 - [x] Enable strict compiler flags in mix.exs (warnings_as_errors in CI env) and ensure zero warnings
@@ -65,13 +65,40 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 
 ## 5. Standard library of predicates and calculators
 
-- [ ] Implement calculator functions referenced in DSL:
-  - [ ] time_between/3, bucket/2-3, decimal_* and dec/1
-  - [ ] Domain calculators as per specs/calculators.md
-- [ ] Expand RulesEngine.Predicates to support all documented ops; add docs and tests
-- [ ] Add pure, well-tested helpers to avoid runtime surprises; document expectations
+- [x] Implement calculator functions referenced in DSL:
+  - [x] time_between/3, bucket/2-3, decimal_* and dec/1
+  - [x] Domain calculators as per specs/calculators.md
+- [x] Expand RulesEngine.Predicates to support all documented ops; add docs and tests
+- [x] Add pure, well-tested helpers to avoid runtime surprises; document expectations
 
-## 6. Tests and coverage
+## 6. Performance optimization
+
+- [ ] **Foundation Infrastructure**:
+  - [ ] Add comprehensive benchmarking suite with Benchee
+  - [ ] Integrate :telemetry events for compilation and runtime profiling
+  - [ ] Add performance regression CI checks
+  - [ ] Memory profiling with :recon integration
+- [ ] **Compilation Optimization** (Critical - 7x performance gap):
+  - [ ] Implement compilation result caching (ETS-based, source checksum keys)
+  - [ ] Cache JSON schema validation (remove disk I/O from hot path)  
+  - [ ] Optimize O(n²) network building algorithms to O(n log n)
+  - [ ] Add parallel rule processing with Task.async_stream
+- [ ] **Runtime Performance** (3x improvement target):
+  - [ ] Replace O(n) priority queue with binary heap (gb_trees/custom heap)
+  - [ ] Implement ETS-based working memory for large fact sets
+  - [ ] Add memory pressure monitoring and fact eviction strategies
+  - [ ] Optimize validation with single-pass binding collection
+- [ ] **Scalability Infrastructure** (Multi-tenant support):
+  - [ ] Implement working memory partitioning (use existing partition_count field)
+  - [ ] Add incremental parsing for delta rule updates  
+  - [ ] Enable hot-swap capabilities for <50ms rule activation
+  - [ ] Add resource isolation and tenant-specific memory budgets
+- [ ] **Memory Management**:
+  - [ ] Convert Map/MapSet structures to ETS tables for large datasets
+  - [ ] Implement fact deduplication and content-addressable storage
+  - [ ] Add configurable cache limits and eviction policies
+
+## 7. Tests and coverage
 
 - [ ] End-to-end tests for all fixtures (currently parse + IR schema only)
 - [ ] Property-based tests for parser (round-trip idempotence, fuzz inputs)
@@ -80,7 +107,7 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 - [ ] Engine integration tests (when runtime exists): assert/modify/retract flows; refraction; agenda determinism
 - [x] Coverage: ensure ExCoveralls gates in CI with threshold (e.g., 85%)
 
-## 7. Tooling and CI
+## 8. Tooling and CI
 
 - [x] Update .github/workflows/ci.yml to run:
   - [x] mix deps.get
@@ -92,7 +119,7 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 - [ ] Add dialyzer configuration for types in DSL modules
 - [ ] Add pre-commit hooks suggestion (format, credo)
 
-## 8. Documentation
+## 9. Documentation
 
 - [ ] Write real README with:
   - [ ] Project overview, DSL snippet, compile example, IR snippet
@@ -106,24 +133,17 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
   - [ ] Performance targets and test methodology
 - [ ] Add docs site config with ExDoc (groups for DSL, Compiler, Engine, Predicates)
 
-## 9. JSON fixtures alignment
+## 10. JSON fixtures alignment
 
 - [ ] Ensure all DSL fixtures have expected JSON comparison files or clarify partial coverage
 - [ ] Add fixtures for accumulate, exists/not, complex guards
 - [ ] Add golden IR fixtures to detect regressions in compiler
 
-## 10. Error handling and messages
+## 11. Error handling and messages
 
 - [ ] Replace generic parser errors with user-friendly diagnostics
 - [ ] Standardise error shape across parser/validator/compiler
 - [ ] Add actionable messages, include source spans and suggestions
-
-## 11. Performance and memory
-
-- [ ] Benchmarks for parser, compiler, and (later) runtime networks
-- [ ] Micro-bench for predicate evaluation and term encoding
-- [ ] Memory profiling for large rule sets and fact volumes
-- [ ] Index selection strategy based on Predicates.selectivity_hint/1
 
 ## 12. Packaging and releases
 

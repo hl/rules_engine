@@ -24,16 +24,16 @@ defmodule RulesEngine.Engine.AlphaMemory do
   @type t :: %__MODULE__{
           memory_id: term(),
           pattern: map(),
-          facts: MapSet.t(),
-          indexes: %{term() => map()},
-          test_chain: [function()],
-          created_at: DateTime.t()
+          facts: term(),
+          indexes: map(),
+          test_chain: list(),
+          created_at: term()
         }
 
   @doc """
   Create new alpha memory for a pattern.
   """
-  @spec new(memory_id :: term(), pattern :: map(), test_chain :: [function()]) :: t()
+  @spec new(term(), map(), list()) :: t()
   def new(memory_id, pattern, test_chain \\ []) do
     %__MODULE__{
       memory_id: memory_id,
@@ -121,12 +121,38 @@ defmodule RulesEngine.Engine.AlphaMemory do
   end
 
   defp update_indexes(indexes, fact_id, fact) do
-    # For now, just create a simple type index
-    # TODO: Create indexes based on discriminating keys from pattern
+    # Create indexes based on discriminating keys from pattern
+    indexes
+    |> update_type_index(fact_id, fact)
+    |> update_field_indexes(fact_id, fact)
+  end
+
+  defp update_type_index(indexes, fact_id, fact) do
     type = Map.get(fact, :type)
 
     Map.update(indexes, :type, %{type => MapSet.new([fact_id])}, fn type_index ->
       Map.update(type_index, type, MapSet.new([fact_id]), &MapSet.put(&1, fact_id))
+    end)
+  end
+
+  defp update_field_indexes(indexes, fact_id, fact) do
+    # Create field-specific indexes for common query patterns
+    Enum.reduce(fact, indexes, fn {field, value}, acc ->
+      case field do
+        # Already indexed above
+        :type -> acc
+        :id -> update_field_index(acc, :id, value, fact_id)
+        field when is_atom(field) -> update_field_index(acc, field, value, fact_id)
+        _ -> acc
+      end
+    end)
+  end
+
+  defp update_field_index(indexes, field, value, fact_id) do
+    index_key = {:field, field}
+
+    Map.update(indexes, index_key, %{value => MapSet.new([fact_id])}, fn field_index ->
+      Map.update(field_index, value, MapSet.new([fact_id]), &MapSet.put(&1, fact_id))
     end)
   end
 

@@ -24,11 +24,11 @@ defmodule RulesEngine.Engine.Token do
   @type fact_id :: term()
 
   @type t :: %__MODULE__{
-          bindings: %{binding_name() => binding_value()},
-          wmes: [fact_id()],
+          bindings: map(),
+          wmes: list(),
           hash: integer(),
-          provenance: map() | nil,
-          created_at: DateTime.t()
+          provenance: term(),
+          created_at: term()
         }
 
   @doc """

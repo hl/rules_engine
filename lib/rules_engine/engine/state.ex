@@ -23,15 +23,15 @@ defmodule RulesEngine.Engine.State do
 
   @type t :: %__MODULE__{
           tenant_key: term(),
-          network: Network.t(),
-          working_memory: WorkingMemory.t(),
-          agenda: Agenda.t(),
+          network: term(),
+          working_memory: term(),
+          agenda: term(),
           fire_limit: pos_integer(),
           partition_count: pos_integer(),
           tracing_enabled: boolean(),
-          tracer: Tracing.t() | nil,
-          refraction_store: MapSet.t(),
-          started_at: DateTime.t()
+          tracer: term(),
+          refraction_store: term(),
+          started_at: term()
         }
 
   @doc """
