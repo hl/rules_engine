@@ -1,0 +1,185 @@
+{
+  "agenda_policy": {
+    "configuration": {
+      "fire_limit": "infinity",
+      "max_queue": "infinity"
+    },
+    "ordering": [
+      {
+        "criterion": "salience",
+        "direction": "desc"
+      },
+      {
+        "criterion": "recency",
+        "direction": "lifo"
+      },
+      {
+        "criterion": "specificity",
+        "direction": "desc"
+      },
+      {
+        "criterion": "rule_id",
+        "direction": "asc"
+      }
+    ],
+    "policy": "default",
+    "rules": [
+      {
+        "deterministic_order": "overtime-detection",
+        "rule_id": "overtime-detection",
+        "salience": 0,
+        "specificity": 2
+      }
+    ]
+  },
+  "compiled_at": "2025-08-15T06:41:51.593147Z",
+  "network": {
+    "accumulate": [
+      {
+        "from": "TimesheetEntry",
+        "group_by": [
+          {
+            "binding": "e",
+            "field": ""
+          }
+        ],
+        "having": {
+          "extra": null,
+          "left": {
+            "binding": "total_hours",
+            "field": ""
+          },
+          "op": ">",
+          "right": {
+            "type": "number",
+            "value": 40
+          }
+        },
+        "id": "acc_overtime-detection_0_0",
+        "out_memory": null,
+        "reducers": [
+          {
+            "expr": {
+              "binding": "h",
+              "field": ""
+            },
+            "kind": "sum",
+            "name": "total_hours"
+          },
+          {
+            "kind": "count",
+            "name": "entry_count"
+          }
+        ]
+      }
+    ],
+    "agenda": [],
+    "alpha": [],
+    "beta": []
+  },
+  "refraction_policy": {
+    "default_policy": "per_production",
+    "rules": [
+      {
+        "custom_signature_module": null,
+        "policy": "default",
+        "rule_id": "overtime-detection",
+        "scope": "per_production",
+        "signature_data": {
+          "binding_count": 0,
+          "deterministic_order": true,
+          "production_id": "overtime-detection"
+        },
+        "ttl": "24h"
+      }
+    ],
+    "scope_options": {
+      "global": {
+        "description": "Shared refraction across rule families",
+        "isolation": false
+      },
+      "per_production": {
+        "description": "Separate refraction set per rule",
+        "isolation": true
+      }
+    },
+    "signature_components": [
+      "production_id",
+      "ordered_wme_ids",
+      "binding_hash"
+    ],
+    "storage": {
+      "backend": "ets_per_production",
+      "default_ttl": "24h",
+      "eviction_policy": "ttl_then_lru",
+      "max_signatures_per_rule": "infinity"
+    }
+  },
+  "rules": [
+    {
+      "actions": [
+        {
+          "fields": {
+            "employee_id": {
+              "binding": "e",
+              "field": ""
+            },
+            "entry_count": {
+              "binding": "entry_count",
+              "field": ""
+            },
+            "total_hours": {
+              "binding": "total_hours",
+              "field": ""
+            }
+          },
+          "op": "emit",
+          "type_name": "OvertimeAlert"
+        }
+      ],
+      "beta_joins": [],
+      "bindings": [],
+      "id": "overtime-detection",
+      "name": "overtime-detection",
+      "salience": 0
+    }
+  ],
+  "source_checksum": "c325f59d4a97d5e7feba7d59a0377c50eaa11f9260d8cf0e38f42b52a5d575b6",
+  "source_map": {
+    "line_count": 9,
+    "mappings": [
+      {
+        "components": {
+          "actions": [
+            {
+              "action_type": "emit",
+              "estimated_column": 5,
+              "estimated_line": 7
+            }
+          ],
+          "bindings": [],
+          "then_clause": {
+            "column": 3,
+            "line": 7
+          },
+          "when_clause": {
+            "column": 3,
+            "line": 2
+          }
+        },
+        "rule_id": "overtime-detection",
+        "source_location": {
+          "byte_offset": 0,
+          "end_line": 9,
+          "start_column": 1,
+          "start_line": 1
+        }
+      }
+    ],
+    "source_available": true,
+    "source_length": 319,
+    "version": 1
+  },
+  "tenant_id": "test-tenant",
+  "version": "v1"
+}

@@ -5,57 +5,20 @@ defmodule RulesEngine.ValidationSizeOpsTest do
 
   @tenant "t"
 
+  defp read_fixture(filename) do
+    File.read!(Path.join([__DIR__, "fixtures", "dsl", filename]))
+  end
+
   test "size_gt on non-collection left is rejected" do
-    _src = """
-    rule "r" do
-      when
-        a: A(xs: v)
-        guard size(v) > 1
-      then
-        emit Out(x: v)
-    end
-    """
-
-    # Our DSL doesn't have size(v) directly; emulate size_* by using op with collection required
-    # Here we deliberately violate by making left non-collection via integer literal
-    src2 = """
-    rule "r" do
-      when
-        a: A(xs: v)
-        guard v size_gt 1
-      then
-        emit Out(x: v)
-    end
-    """
-
-    assert {:error, errs} = Compiler.parse_and_compile(@tenant, src2)
-
-    assert Enum.any?(errs, fn
-             %{code: :invalid_operand, message: msg} -> String.contains?(msg, "collection left")
-             %{code: :parse_error} -> true
-             %{error: _} -> true
-             _ -> false
-           end)
+    src = read_fixture("validation_size_gt_non_collection.rule")
+    assert {:error, errs} = Compiler.parse_and_compile(@tenant, src, %{fact_schemas: false})
+    # With our mock expectations, we check for invalid_operand rather than unknown_binding
+    assert Enum.any?(errs, &(&1.code == :invalid_operand))
   end
 
   test "size_eq with non-numeric right is rejected" do
-    src = """
-    rule "r" do
-      when
-        a: A(xs: v)
-        guard v size_eq "x"
-      then
-        emit Out(x: v)
-    end
-    """
-
-    assert {:error, errs} = Compiler.parse_and_compile(@tenant, src)
-
-    assert Enum.any?(errs, fn
-             %{code: :invalid_operand, message: msg} -> String.contains?(msg, "numeric right")
-             %{code: :parse_error} -> true
-             %{error: _} -> true
-             _ -> false
-           end)
+    src = read_fixture("validation_size_eq_non_numeric.rule")
+    assert {:error, errs} = Compiler.parse_and_compile(@tenant, src, %{fact_schemas: false})
+    assert Enum.any?(errs, &(&1.code == :invalid_operand))
   end
 end

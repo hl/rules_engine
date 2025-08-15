@@ -1,0 +1,9 @@
+rule "overtime-detection" do
+  when
+    ot: accumulate from TimesheetEntry(employee_id: e, hours: h, date: d)
+        group_by e
+        reduce total_hours: sum(h), entry_count: count()
+        having total_hours > 40
+  then
+    emit OvertimeAlert(employee_id: e, total_hours: total_hours, entry_count: entry_count)
+end

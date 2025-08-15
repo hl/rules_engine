@@ -42,7 +42,7 @@ defmodule RulesEngine do
 
   ## Examples
 
-      iex> rule = "rule \\"test\\" salience: 10 do\\n  when\\n    fact: TestFact(id: x)\\n    guard x > 0\\n  then\\n    emit Result(value: x)\\nend"
+      iex> rule = "rule \\"test\\" salience: 10 do\\n  when\\n    fact: Employee(id: x)\\n    guard x > 0\\n  then\\n    emit Result(emp: x)\\nend"
       iex> {:ok, _ast, _warnings} = RulesEngine.parse_rule(rule)
       iex> true
       true
@@ -66,7 +66,7 @@ defmodule RulesEngine do
 
   ## Examples
 
-      iex> rule = "rule \\"test\\" salience: 10 do\\n  when\\n    fact: TestFact(id: x)\\n  then\\n    emit Result(value: x)\\nend"
+      iex> rule = "rule \\"test\\" salience: 10 do\\n  when\\n    fact: Employee(id: x)\\n  then\\n    emit Result(emp: x)\\nend"
       iex> context = %{now: DateTime.from_naive!(~N[2025-01-01 00:00:00], "Etc/UTC")}
       iex> {:ok, _ir} = RulesEngine.compile_rule("test-tenant", rule, context)
       iex> true
@@ -91,8 +91,8 @@ defmodule RulesEngine do
   ## Examples
 
       iex> rules = [
-      ...>   ~s{rule "rule1" do\\n  when\\n    fact: Test(x: 1)\\n  then\\n    emit Result(y: 2)\\nend},
-      ...>   ~s{rule "rule2" do\\n  when\\n    fact: Test(x: 2)\\n  then\\n    emit Result(y: 3)\\nend}
+      ...>   ~s{rule "rule1" do\\n  when\\n    fact: Employee(id: 1)\\n  then\\n    emit Result(emp: 2)\\nend},
+      ...>   ~s{rule "rule2" do\\n  when\\n    fact: Employee(id: 2)\\n  then\\n    emit Result(emp: 3)\\nend}
       ...> ]
       iex> {:ok, results} = RulesEngine.parse_rules(rules)
       iex> length(results) == 2
