@@ -1,0 +1,6 @@
+rule "invalid-field-test" do
+  when
+    emp: Employee(id: e, role: "manager", invalid_field: x)
+  then
+    emit Result(employee_id: e, status: "processed")
+end

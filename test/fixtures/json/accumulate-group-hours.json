@@ -1,0 +1,24 @@
+{
+  "version": "v1",
+  "tenant_id": "test-tenant",
+  "source_checksum": "0000000000000000000000000000000000000000000000000000000000000000",
+  "compiled_at": "1970-01-01T00:00:00Z",
+  "rules": [
+    {
+      "id": "accumulate-group-hours",
+      "name": "accumulate-group-hours",
+      "salience": 60,
+      "bindings": [],
+      "beta_joins": [],
+      "actions": [
+        {"op": "emit", "type_name": "HoursAgg", "fields": {"employee_id": {"binding": "e", "field": ""}, "hours": {"binding": "total_hours", "field": ""}}}
+      ]
+    }
+  ],
+  "network": {"alpha": [], "beta": [], "accumulate": [
+    {"id": "acc_accumulate-group-hours_1", "from": "TimesheetEntry", "group_by": [{"binding": "e", "field": ""}], "reducers": [
+      {"name": "total_hours", "kind": "sum", "expr": {"name": "hours_between", "args": [{"binding": "s", "field": ""}, {"binding": "f", "field": ""}]}},
+      {"name": "cnt", "kind": "count"}
+    ], "out_memory": null}
+  ], "agenda": []}
+}

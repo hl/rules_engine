@@ -12,31 +12,33 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 
 ## 1. DSL parsing and validation
 
-- [ ] Extend grammar to cover:
+- [x] Extend grammar to cover:
   - [x] Negation/exists in when: not/exists forms (grammar + AST tags)
   - [x] Accumulate/group-by syntax as per specs/accumulation.md
   - [x] More boolean/collection ops (overlap, starts_with, contains) if part of DSL and Predicates
 - [x] Implement parser recovery and human-readable errors (file:line, caret context)
 - [x] Normalise AST format (consistent then/when tuple handling) and add type for AST nodes
-- [ ] Validation improvements:
-  - [ ] Cross-check bindings across all guard contexts (including nested and/or)
-  - [ ] Validate accumulate reducers and having clauses (types, names)
-  - [ ] Enforce allowed fields using fact schema registry; surface context-rich paths
-  - [ ] Predicate type expectation enforcement aligned with RulesEngine.Predicates.expectations/1
+- [x] Validation improvements:
+  - [x] Cross-check bindings across all guard contexts (including nested and/or)
+  - [x] Validate accumulate reducers and having clauses (types, names)
+  - [x] Enforce allowed fields using fact schema registry; surface context-rich paths
+  - [x] Predicate type expectation enforcement aligned with RulesEngine.Predicates.expectations/1
 
 ## 2. IR compilation
 
-- [ ] Build real Alpha network from fact patterns with index hints (op selectivity)
-- [ ] Build Beta network joins from guards and inter-binding comparisons
-- [ ] Encode not/exists nodes into network with correct semantics
-- [ ] Implement accumulate nodes:
-  - [ ] Sum, count, min, max reducers
-  - [ ] Group-by key encoding and incremental update policy
-  - [ ] Having filters at compile-time into network nodes
-- [ ] Add agenda policy data in IR (salience, recency, tiebreakers) from specs/agenda.md
-- [ ] Include refraction settings per rule (from specs/refraction.md)
-- [ ] Attach source map info (byte offsets) to IR nodes for traceability
-- [ ] Schema conformance hardening: round-trip cast where feasible before validate()
+- [x] Build real Alpha network from fact patterns with index hints (op selectivity)
+- [x] Build Beta network joins from guards and inter-binding comparisons
+- [x] Encode not/exists nodes into network with correct semantics
+- [x] Add action compilation to IR (emit, call, log actions with full schema compliance)
+- [x] Implement accumulate nodes:
+  - [x] Sum, count, min, max, avg reducers with proper IR encoding
+  - [x] Group-by key encoding and incremental update policy
+  - [x] Reducer bindings available in action clauses
+  - [x] Having filters at compile-time into network nodes (parsed and stored in IR)
+- [x] Add agenda policy data in IR (salience, recency, tiebreakers) from specs/agenda.md
+- [x] Include refraction settings per rule (from specs/refraction.md)
+- [x] Attach source map info (byte offsets) to IR nodes for traceability
+- [x] Schema conformance hardening: round-trip cast where feasible before validate()
 
 ## 3. Engine runtime (OTP)
 
@@ -75,7 +77,7 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 - [ ] Validation tests for error surfaces (unknown bindings, invalid operands, unknown fields)
 - [ ] IR tests for guard flattening, set ops, between
 - [ ] Engine integration tests (when runtime exists): assert/modify/retract flows; refraction; agenda determinism
-- [ ] Coverage: ensure ExCoveralls gates in CI with threshold (e.g., 85%)
+- [x] Coverage: ensure ExCoveralls gates in CI with threshold (e.g., 85%)
 
 ## 7. Tooling and CI
 
@@ -146,6 +148,7 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 ---
 
 Legend:
+
 - [ ] Not started
 - [ ] In progress
 - [x] Done

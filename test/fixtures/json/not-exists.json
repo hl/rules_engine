@@ -1,0 +1,26 @@
+{
+  "version": "v1",
+  "tenant_id": "test-tenant",
+  "source_checksum": "0000000000000000000000000000000000000000000000000000000000000000",
+  "compiled_at": "1970-01-01T00:00:00Z",
+  "rules": [
+    {
+      "id": "not-exists",
+      "name": "not-exists",
+      "salience": 5,
+      "bindings": [
+        {"binding": "a", "type": "A", "alpha_tests": [
+          {"op": "==", "left": {"binding": "a", "field": "id"}, "right": {"binding": "x", "field": ""}}
+        ]}
+      ],
+      "beta_joins": [
+        {"op": "not_exists", "left": {"binding": "a", "field": ""}, "right": {"type": "string", "value": "B"}, "extra": null},
+        {"op": "exists", "left": {"binding": "a", "field": ""}, "right": {"type": "string", "value": "C"}, "extra": null}
+      ],
+      "actions": [
+        {"op": "emit", "type_name": "Out", "fields": {"id": {"binding": "x", "field": ""}}}
+      ]
+    }
+  ],
+  "network": {"alpha": [], "beta": [], "accumulate": [], "agenda": []}
+}

@@ -1,0 +1,42 @@
+{
+  "version": "v1",
+  "tenant_id": "test-tenant",
+  "source_checksum": "0000000000000000000000000000000000000000000000000000000000000000",
+  "compiled_at": "1970-01-01T00:00:00Z",
+  "rules": [
+    {
+      "id": "accumulate-total-hours",
+      "name": "accumulate-total-hours",
+      "salience": 70,
+      "bindings": [
+        {
+          "binding": "e",
+          "type": "TimesheetEntry",
+          "alpha_tests": [
+            {"op": "==", "left": {"binding": "e", "field": "employee_id"}, "right": {"type": "string", "value": "emp"}},
+            {"op": "==", "left": {"binding": "e", "field": "start_at"}, "right": {"type": "string", "value": "s"}},
+            {"op": "==", "left": {"binding": "e", "field": "end_at"}, "right": {"type": "string", "value": "f"}}
+          ]
+        }
+      ],
+      "beta_joins": [
+        {"op": ">", "left": {"name": "hours_between", "args": [
+          {"binding": "s", "field": ""}, {"binding": "f", "field": ""}
+        ]}, "right": {"type": "number", "value": 0}, "extra": null}
+      ],
+      "actions": [
+        {
+          "op": "emit",
+          "type_name": "HoursTotal",
+          "fields": {
+            "employee_id": {"binding": "emp", "field": ""},
+            "hours": {"name": "hours_between", "args": [
+              {"binding": "s", "field": ""}, {"binding": "f", "field": ""}
+            ]}
+          }
+        }
+      ]
+    }
+  ],
+  "network": {"alpha": [], "beta": [], "accumulate": [], "agenda": []}
+}

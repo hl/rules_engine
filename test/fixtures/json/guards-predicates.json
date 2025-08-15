@@ -1,0 +1,36 @@
+{
+  "version": "v1",
+  "tenant_id": "test-tenant",
+  "source_checksum": "0000000000000000000000000000000000000000000000000000000000000000",
+  "compiled_at": "1970-01-01T00:00:00Z",
+  "rules": [
+    {
+      "id": "guards-predicates",
+      "name": "guards-predicates",
+      "salience": 10,
+      "bindings": [
+        {
+          "binding": "u",
+          "type": "User",
+          "alpha_tests": [
+            {"op": "==", "left": {"binding": "u", "field": "name"}, "right": {"binding": "n", "field": ""}},
+            {"op": "==", "left": {"binding": "u", "field": "sign_in_at"}, "right": {"binding": "t", "field": ""}},
+            {"op": "==", "left": {"binding": "u", "field": "roles"}, "right": {"binding": "r", "field": ""}}
+          ]
+        }
+      ],
+      "beta_joins": [
+        {"op": "starts_with", "left": {"binding": "n", "field": ""}, "right": {"type": "string", "value": "H"}, "extra": null},
+        {"op": "contains", "left": {"binding": "n", "field": ""}, "right": {"type": "string", "value": "enry"}, "extra": null},
+        {"op": "after", "left": {"binding": "t", "field": ""}, "right": {"type": "datetime", "value": "2025-01-01T00:00:00Z"}, "extra": null},
+        {"op": "before", "left": {"binding": "t", "field": ""}, "right": {"type": "datetime", "value": "2025-12-31T23:59:59Z"}, "extra": null},
+        {"op": "size_gt", "left": {"binding": "r", "field": ""}, "right": {"type": "number", "value": 1}, "extra": null},
+        {"op": "size_eq", "left": {"binding": "r", "field": ""}, "right": {"type": "number", "value": 2}, "extra": null}
+      ],
+      "actions": [
+        {"op": "emit", "type_name": "Audit", "fields": {"user": {"binding": "n", "field": ""}}}
+      ]
+    }
+  ],
+  "network": {"alpha": [], "beta": [], "accumulate": [], "agenda": []}
+}

@@ -1,0 +1,12 @@
+rule "guards-predicates" salience: 10 do
+  when
+    u: User(name: n, sign_in_at: t, roles: r)
+    guard n starts_with "H"
+    guard n contains "enry"
+    guard t after DT'2025-01-01T00:00:00Z'
+    guard t before DT'2025-12-31T23:59:59Z'
+    guard r size_gt 1
+    guard r size_eq 2
+  then
+    emit Audit(user: n)
+end

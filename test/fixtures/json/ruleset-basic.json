@@ -1,0 +1,28 @@
+{
+  "rules": [
+    {
+      "name": "accumulate-total-hours",
+      "salience": 70,
+      "when": [
+        {"binding": "e", "type": "TimesheetEntry", "fields": {"employee_id": {"binding_ref": "emp"}, "start_at": {"binding_ref": "s"}, "end_at": {"binding_ref": "f"}}},
+        {"guard": {">": [{"call": ["hours_between", [{"binding_ref": "s"}, {"binding_ref": "f"}]]}, {"type": "number", "value": 0}]}}
+      ],
+      "then": [
+        {"emit": "HoursTotal", "fields": {"employee_id": {"binding_ref": "emp"}, "hours": {"call": ["hours_between", [{"binding_ref": "s"}, {"binding_ref": "f"}]]}}}
+      ]
+    },
+    {
+      "name": "sf-min-wage",
+      "salience": 60,
+      "when": [
+        {"binding": "shift", "type": "ScheduledShift", "fields": {"employee_id": {"binding_ref": "e"}, "start_at": {"binding_ref": "s"}, "end_at": {"binding_ref": "f"}, "location": {"type": "string", "value": "US/CA/SF"}, "planned_hours": {"binding_ref": "h"}}},
+        {"binding": "law", "type": "LocationRegulation", "fields": {"location": {"type": "string", "value": "US/CA/SF"}, "constraint_type": {"type": "string", "value": "min_wage"}, "params": {"binding_ref": "p"}}},
+        {"binding": "rate", "type": "PayRate", "fields": {"employee_id": {"binding_ref": "e"}, "rate_type": {"type": "string", "value": "hourly"}, "base_rate": {"binding_ref": "r"}}},
+        {"guard": {"<": [{"binding_ref": "r"}, {"call": ["get_min_wage", [{"binding_ref": "p"}]]}]}}
+      ],
+      "then": [
+        {"emit": "ComplianceViolation", "fields": {"employee_id": {"binding_ref": "e"}, "period_key": {"call": ["bucket", [{"type": "string", "value": "day"}, {"binding_ref": "s"}]]}, "code": {"type": "string", "value": "MIN_WAGE"}, "severity": {"type": "string", "value": "high"}, "details": {"type": "string", "value": "Minimum wage violation"}}}
+      ]
+    }
+  ]
+}

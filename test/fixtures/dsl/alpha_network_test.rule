@@ -1,0 +1,8 @@
+rule "alpha-test" do
+  when
+    emp: Employee(id: e, role: "manager")
+    ts: TimesheetEntry(employee_id: e, hours: h)
+    guard h > 8
+  then
+    emit Overtime(employee_id: e, hours: h - 8)
+end

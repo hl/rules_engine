@@ -1,0 +1,7 @@
+rule "r" do
+  when
+    a: A(x: v)
+    guard y > 1
+  then
+    emit Out(x: v)
+end

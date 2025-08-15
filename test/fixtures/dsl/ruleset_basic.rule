@@ -1,0 +1,17 @@
+rule "accumulate-total-hours" salience: 70 do
+  when
+    e: TimesheetEntry(employee_id: emp, start_at: s, end_at: f)
+    guard hours_between(s, f) > 0
+  then
+    emit HoursTotal(employee_id: emp, hours: hours_between(s, f))
+end
+
+rule "sf-min-wage" salience: 60 do
+  when
+    shift: ScheduledShift(employee_id: e, start_at: s, end_at: f, location: "US/CA/SF", planned_hours: h)
+    law: LocationRegulation(location: "US/CA/SF", constraint_type: :min_wage, params: p)
+    rate: PayRate(employee_id: e, rate_type: :hourly, base_rate: r)
+    guard r < get_min_wage(p)
+  then
+    emit ComplianceViolation(employee_id: e, period_key: bucket(:day, s), code: "MIN_WAGE", severity: :high, details: "Minimum wage violation")
+end

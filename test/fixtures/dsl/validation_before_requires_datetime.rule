@@ -1,0 +1,7 @@
+rule "r" do
+  when
+    a: A(x: v)
+    guard v before 10
+  then
+    emit Out(x: v)
+end

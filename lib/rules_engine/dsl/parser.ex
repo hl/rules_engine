@@ -186,12 +186,37 @@ defmodule RulesEngine.DSL.Parser do
   )
 
   defcombinatorp(
+    :before_expr,
+    parsec(:value_expr)
+    |> ignore(parsec(:ws))
+    |> ignore(string("before"))
+    |> ignore(parsec(:ws))
+    |> concat(parsec(:value_expr))
+    |> reduce({__MODULE__, :reduce_before, []})
+  )
+
+  defcombinatorp(
+    :size_expr,
+    parsec(:value_expr)
+    |> ignore(parsec(:ws))
+    |> choice([
+      string("size_gt") |> replace(:size_gt),
+      string("size_eq") |> replace(:size_eq)
+    ])
+    |> ignore(parsec(:ws))
+    |> concat(parsec(:value_expr))
+    |> reduce({__MODULE__, :reduce_size, []})
+  )
+
+  defcombinatorp(
     :guard_term,
     choice([
       ignore(string("(")) |> concat(parsec(:guard_expr)) |> ignore(string(")")),
       parsec(:comparison_expr),
       parsec(:set_expr),
-      parsec(:between_expr)
+      parsec(:between_expr),
+      parsec(:before_expr),
+      parsec(:size_expr)
     ])
   )
 
@@ -434,7 +459,7 @@ defmodule RulesEngine.DSL.Parser do
     )
     |> ignore(parsec(:ws))
     |> ignore(string("do"))
-    |> ignore(parsec(:ws))
+    |> ignore(optional(parsec(:ws)))
     |> ignore(string("when"))
     |> ignore(newline)
     |> concat(parsec(:when_block))
@@ -571,6 +596,14 @@ defmodule RulesEngine.DSL.Parser do
     {:between, v, l, r}
   end
 
+  def reduce_before([lhs, rhs]) do
+    {:cmp, :before, lhs, rhs}
+  end
+
+  def reduce_size([lhs, op, rhs]) do
+    {:cmp, op, lhs, rhs}
+  end
+
   def reduce_logical([]), do: nil
 
   def reduce_logical([first | rest]) do
@@ -682,6 +715,7 @@ defmodule RulesEngine.DSL.Parser do
 
   def reduce_named_reducer([name, {:sum, [expr]}]), do: {to_string(name), {:sum, expr}}
   def reduce_named_reducer([name, {:count}]), do: {to_string(name), {:count, nil}}
+  def reduce_named_reducer([name, {:count, []}]), do: {to_string(name), {:count, nil}}
   def reduce_named_reducer([name, {:min, [expr]}]), do: {to_string(name), {:min, expr}}
   def reduce_named_reducer([name, {:max, [expr]}]), do: {to_string(name), {:max, expr}}
   def reduce_named_reducer([name, {:avg, [expr]}]), do: {to_string(name), {:avg, expr}}
@@ -696,7 +730,6 @@ defmodule RulesEngine.DSL.Parser do
     {salience, rest2} =
       case rest do
         [s | tail] when is_integer(s) -> {s, tail}
-        [s | tail] -> {s, tail}
         other -> {nil, other}
       end
 

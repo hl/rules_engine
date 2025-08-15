@@ -1,0 +1,7 @@
+rule "canonical-validation" do
+  when
+    emp: Employee(id: e, role: "manager", location: loc)
+    ts: TimesheetEntry(employee_id: e, hours: h, start_at: d)
+  then
+    emit PayLine(employee_id: e, hours: h, component: "regular", rate: 25.0)
+end

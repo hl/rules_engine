@@ -1,0 +1,8 @@
+rule "not-exists" salience: 5 do
+  when
+    a: A(id: x)
+    not B(a_id: x)
+    exists C(a_id: x)
+  then
+    emit Out(id: x)
+end

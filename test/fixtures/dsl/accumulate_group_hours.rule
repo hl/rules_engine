@@ -1,0 +1,8 @@
+rule "accumulate-group-hours" salience: 60 do
+  when
+    acc: accumulate from TimesheetEntry(employee_id: e, start_at: s, end_at: f)
+         group_by e
+         reduce total_hours: sum(hours_between(s, f)), cnt: count()
+  then
+    emit HoursAgg(employee_id: e, hours: total_hours)
+end

@@ -1,0 +1,13 @@
+rule "rule1" do
+  when
+    emp: Employee(role: "manager")
+  then
+    emit Out(x: "rule1")
+end
+
+rule "rule2" do  
+  when
+    emp: Employee(role: "manager")
+  then
+    emit Out(x: "rule2")
+end

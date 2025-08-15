@@ -1,0 +1,7 @@
+rule "r" do
+  when
+    a: A(xs: v)
+    guard v size_eq "x"
+  then
+    emit Out(x: v)
+end

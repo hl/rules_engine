@@ -1,0 +1,7 @@
+rule "simple-facts" do
+  when
+    emp: Employee()
+    ts: TimesheetEntry()
+  then
+    emit Out(x: "simple")
+end
