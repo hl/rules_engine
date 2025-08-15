@@ -91,6 +91,14 @@ defmodule RulesEngine.Engine.Token do
   end
 
   @doc """
+  Get all bindings from token.
+  """
+  @spec bindings(t()) :: %{binding_name() => binding_value()}
+  def bindings(%__MODULE__{} = token) do
+    token.bindings
+  end
+
+  @doc """
   Get WMEs (fact IDs) in token.
   """
   @spec get_wmes(t()) :: [fact_id()]

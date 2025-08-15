@@ -34,7 +34,7 @@ defmodule RulesEngine.Engine.WorkingMemory do
           partition_count: pos_integer()
         }
 
-  alias RulesEngine.Engine.{AlphaMemory, BetaMemory, TokenTable}
+  # alias RulesEngine.Engine.{AlphaMemory, BetaMemory, TokenTable}
 
   @doc """
   Create new working memory with specified partition count.

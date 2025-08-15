@@ -7,7 +7,7 @@ defmodule RulesEngine.Engine.Agenda do
   Supports agenda policies and refraction control.
   """
 
-  alias RulesEngine.Engine.{Activation, Token}
+  alias RulesEngine.Engine.Activation
 
   defstruct [
     # Priority queue of activations
@@ -73,12 +73,9 @@ defmodule RulesEngine.Engine.Agenda do
   @spec next_activation(t()) :: Activation.t() | nil
   def next_activation(%__MODULE__{} = agenda) do
     case :queue.out(agenda.activations) do
-      {{:value, activation}, new_queue} ->
-        # Update agenda state after removing activation
-        new_agenda = %{agenda | activations: new_queue, fired_count: agenda.fired_count + 1}
-
-        # Return both activation and updated agenda
-        # Note: This breaks the single-return pattern, but we need both
+      {{:value, activation}, _new_queue} ->
+        # Return activation without updating state (caller handles state update)
+        # Note: This function is read-only - state updates handled by pop_activation/1
         activation
 
       {:empty, _queue} ->

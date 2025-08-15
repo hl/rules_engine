@@ -11,6 +11,8 @@ defmodule RulesEngine.Engine.ActionExecutor do
   rule execution and external side effects.
   """
 
+  require Logger
+
   alias RulesEngine.Engine.{Activation, Token}
 
   @type action :: %{
@@ -220,7 +222,7 @@ defmodule RulesEngine.Engine.ActionExecutor do
     case level do
       :debug -> Logger.debug(message, context)
       :info -> Logger.info(message, context)
-      :warn -> Logger.warn(message, context)
+      :warn -> Logger.warning(message, context)
       :error -> Logger.error(message, context)
       _ -> Logger.info(message, context)
     end

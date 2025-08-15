@@ -7,9 +7,9 @@ Specifies activation ordering and lifecycle.
 ```mermaid
 flowchart LR
   A[Activations enqueued] --> S[Sort by Salience]
-  S --> R[Group by Recency (LIFO)]
+  S --> R[Group by Recency LIFO]
   R --> SP[Break ties by Specificity]
-  SP --> ID[Deterministic tie-break: rule_id]
+  SP --> ID[Deterministic tie-break rule_id]
   ID --> FIRE[Next to Fire]
 ```
 

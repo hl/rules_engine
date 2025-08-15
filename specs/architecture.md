@@ -15,15 +15,13 @@ Rationale — Why a DSL
 
 ```mermaid
 flowchart LR
-  subgraph LibraryRuntime[Library Runtime]
-    Partitions[PartitionSupervisor (optional)]
-    subgraph Partitions
-      DS1[DynamicSupervisor p0]
-      DS2[DynamicSupervisor p1]
-      DSn[DynamicSupervisor pN]
-    end
-  end
-  Caller -->|Engine Ops| Partitions
+  Caller[Application Code] -->|Engine Operations| PS[PartitionSupervisor]
+  PS --> DS1[DynamicSupervisor p0]
+  PS --> DS2[DynamicSupervisor p1] 
+  PS --> DSn[DynamicSupervisor pN]
+  DS1 --> E1[Engine tenant A]
+  DS2 --> E2[Engine tenant B]
+  DSn --> En[Engine tenant N]
 ```
 
 - Engine: A `GenServer` coordinating fact ingestion (assert/modify/retract), propagation through the network, agenda management, and RHS action execution.
@@ -94,12 +92,13 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-  PS[PartitionSupervisor (optional)]
+  PS[PartitionSupervisor]
   PS --> DS0[DynamicSupervisor p0]
   PS --> DS1[DynamicSupervisor p1]
   PS --> DSn[DynamicSupervisor pN]
-  DS0 -->|start_child hash: tenant_key| Eng0[Engine tenant A]
-  DS1 -->|start_child hash: tenant_key| Eng1[Engine tenant B]
+  DS0 -->|tenant hash| Eng0[Engine tenant A]
+  DS1 -->|tenant hash| Eng1[Engine tenant B]
+  DSn -->|tenant hash| EngN[Engine tenant N]
 ```
 
 - One `GenServer` per tenant engine for determinism. All mutations are serialized.

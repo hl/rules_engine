@@ -36,7 +36,7 @@ defmodule RulesEngine.Engine do
   use GenServer
   require Logger
 
-  alias RulesEngine.Engine.{State, WorkingMemory, Agenda, Network, Tracing}
+  alias RulesEngine.Engine.{State, WorkingMemory, Agenda, Tracing}
 
   # Client API
 
@@ -389,7 +389,7 @@ defmodule RulesEngine.Engine do
 
   defp fire_activation(state, activation) do
     # Check refraction - don't fire if already fired with same token signature
-    refraction_key = Activation.refraction_key(activation)
+    refraction_key = RulesEngine.Engine.Activation.refraction_key(activation)
 
     # Trace activation lifecycle
     new_tracer =
@@ -523,7 +523,7 @@ defmodule RulesEngine.Engine do
       type: :refraction,
       timestamp: DateTime.utc_now(),
       production_id: activation.production_id,
-      token_signature: Activation.token_signature(activation),
+      token_signature: RulesEngine.Engine.Activation.token_signature(activation),
       message: "Activation refracted - already fired with same token"
     }
   end
@@ -535,8 +535,8 @@ defmodule RulesEngine.Engine do
           type: :rule_fire,
           timestamp: DateTime.utc_now(),
           production_id: activation.production_id,
-          bindings: Activation.bindings(activation),
-          facts: Activation.wmes(activation)
+          bindings: RulesEngine.Engine.Activation.bindings(activation),
+          facts: RulesEngine.Engine.Activation.wmes(activation)
         }
       ]
 

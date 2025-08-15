@@ -65,7 +65,7 @@ defmodule RulesEngine.Engine.Activation do
   """
   @spec bindings(t()) :: map()
   def bindings(%__MODULE__{} = activation) do
-    activation.token.bindings
+    Token.bindings(activation.token)
   end
 
   @doc """

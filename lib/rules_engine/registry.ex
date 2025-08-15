@@ -9,7 +9,7 @@ defmodule RulesEngine.Registry do
   @doc """
   Start the registry.
   """
-  def start_link(opts \\ []) do
+  def start_link(_opts \\ []) do
     Registry.start_link(keys: :unique, name: __MODULE__, partitions: System.schedulers_online())
   end
 
