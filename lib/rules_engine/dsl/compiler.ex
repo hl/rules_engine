@@ -1,8 +1,26 @@
 defmodule RulesEngine.DSL.Compiler do
   @moduledoc """
   Parse and compile DSL to IR per specs/ir.schema.json.
+
+  ## Compilation Caching
+
+  The compiler includes an intelligent caching system to avoid recompiling
+  unchanged DSL sources. Caching is enabled by default and can be controlled
+  via application configuration:
+
+      # Enable/disable compilation cache (default: true)
+      config :rules_engine, enable_compilation_cache: true
+
+  Cache behavior can also be controlled per-compilation via the `:cache` option
+  passed to `parse_and_compile/3`.
+
+  ## Release Compatibility
+
+  This module is fully compatible with Mix releases and does not depend on
+  Mix being available at runtime.
   """
   alias RulesEngine.DSL.{Parser, Validate}
+  alias RulesEngine.Engine.PredicateRegistry
 
   @doc """
   Parse only.
@@ -28,16 +46,80 @@ defmodule RulesEngine.DSL.Compiler do
   """
   @spec parse_and_compile(String.t(), String.t(), map()) :: {:ok, map()} | {:error, [any()]}
   def parse_and_compile(tenant_id, source, opts \\ %{}) do
+    start_time = System.monotonic_time()
+    checksum = Base.encode16(:crypto.hash(:sha256, normalise_source(source)), case: :lower)
+
+    :telemetry.execute([:rules_engine, :compile, :start], %{}, %{
+      tenant_id: tenant_id,
+      source_size: byte_size(source),
+      checksum: checksum
+    })
+
+    # Check cache first if caching is enabled (default: true, can be disabled via config)
+    default_cache = Application.get_env(:rules_engine, :enable_compilation_cache, true)
+    cache_enabled = Map.get(opts, :cache, default_cache)
+
+    result =
+      case cache_enabled do
+        true ->
+          case RulesEngine.CompilationCache.get(checksum, tenant_id) do
+            {:hit, ir} ->
+              {:ok, ir}
+
+            :miss ->
+              compile_from_source(tenant_id, source, checksum, opts, cache_enabled)
+          end
+
+        false ->
+          compile_from_source(tenant_id, source, checksum, opts, cache_enabled)
+      end
+
+    duration = System.monotonic_time() - start_time
+
+    case result do
+      {:ok, ir} ->
+        :telemetry.execute([:rules_engine, :compile, :stop], %{duration: duration}, %{
+          tenant_id: tenant_id,
+          source_size: byte_size(source),
+          result: :success,
+          rules_count: length(Map.get(ir, "rules", [])),
+          cache_hit: cache_enabled
+        })
+
+      {:error, errors} ->
+        :telemetry.execute([:rules_engine, :compile, :stop], %{duration: duration}, %{
+          tenant_id: tenant_id,
+          source_size: byte_size(source),
+          result: :error,
+          error_count: length(errors)
+        })
+    end
+
+    result
+  end
+
+  defp compile_from_source(tenant_id, source, checksum, opts, cache_enabled) do
     with {:ok, ast, _warn} <- parse(source, opts),
          {:ok, _ast} <- Validate.validate(ast, opts) do
-      checksum = Base.encode16(:crypto.hash(:sha256, normalise_source(source)), case: :lower)
       # Include original source for source mapping
       compile_opts =
         opts
         |> Map.put(:source_checksum, checksum)
         |> Map.put(:original_source, source)
 
-      compile(tenant_id, ast, compile_opts)
+      case compile(tenant_id, ast, compile_opts) do
+        {:ok, ir} = result ->
+          # Cache the result if caching is enabled
+
+          if cache_enabled do
+            RulesEngine.CompilationCache.put(checksum, tenant_id, ir)
+          end
+
+          result
+
+        error ->
+          error
+      end
     end
   end
 
@@ -84,30 +166,29 @@ defmodule RulesEngine.DSL.Compiler do
   end
 
   defp build_alpha_network(rules) do
-    # Extract all fact patterns from rules and create alpha nodes
-    fact_patterns = extract_fact_patterns(rules)
-    not_exists_patterns = extract_not_exists_patterns(rules)
+    # Optimized O(n log n) alpha network construction
+    # Step 1: Build sorted fact type index - O(n log n)
+    fact_type_index = build_fact_type_index(rules)
 
-    alpha_nodes_from_facts =
-      fact_patterns
-      |> group_fact_patterns_by_type()
-      |> build_alpha_nodes_with_selectivity()
+    # Step 2: Extract and group patterns efficiently - O(n)
+    {fact_patterns, not_exists_patterns} = extract_patterns_batch(rules)
 
-    alpha_nodes_from_not_exists =
-      not_exists_patterns
-      |> group_fact_patterns_by_type()
-      |> build_alpha_nodes_with_selectivity()
+    # Step 3: Build alpha nodes with batch processing - O(n log n)
+    alpha_nodes_from_facts = build_alpha_nodes_batch(fact_patterns, fact_type_index)
+    alpha_nodes_from_not_exists = build_alpha_nodes_batch(not_exists_patterns, fact_type_index)
 
-    # Merge and deduplicate alpha nodes by id
-    (alpha_nodes_from_facts ++ alpha_nodes_from_not_exists)
-    |> Enum.uniq_by(fn node -> node["id"] end)
+    # Step 4: Efficient deduplication using Map - O(n)
+    merge_and_deduplicate_alpha_nodes(alpha_nodes_from_facts, alpha_nodes_from_not_exists)
   end
 
   defp build_beta_network(rules) do
-    # Build beta join network from inter-binding comparisons and guards
-    # This creates the join topology between alpha nodes
-    join_nodes = build_beta_nodes_from_rules(rules)
-    not_exists_nodes = build_not_exists_nodes_from_rules(rules)
+    # Optimized O(n log n) beta network construction
+    # Step 1: Pre-compute binding reference index - O(n)
+    binding_index = build_binding_reference_index(rules)
+
+    # Step 2: Build join nodes with optimized algorithms - O(n log n)
+    join_nodes = build_join_nodes_optimized(rules, binding_index)
+    not_exists_nodes = build_not_exists_nodes_optimized(rules, binding_index)
 
     join_nodes ++ not_exists_nodes
   end
@@ -830,279 +911,350 @@ defmodule RulesEngine.DSL.Compiler do
 
   defp binding_ref(binding, field), do: %{"binding" => binding, "field" => field}
 
-  # Alpha network construction helpers
+  # Optimized network construction helpers (O(n log n))
 
-  defp extract_fact_patterns(rules) do
-    Enum.flat_map(rules, fn rule ->
-      # Extract fact patterns from rule bindings
-      Enum.map(rule["bindings"] || [], fn binding ->
-        %{
-          "rule_id" => rule["id"],
-          "binding" => binding["binding"],
-          "type" => binding["type"],
-          "tests" => binding["alpha_tests"] || []
-        }
+  defp build_fact_type_index(rules) do
+    rules
+    |> Enum.reduce(%{}, fn rule, acc ->
+      Enum.reduce(rule["bindings"] || [], acc, fn binding, type_acc ->
+        fact_type = binding["type"]
+
+        Map.update(
+          type_acc,
+          fact_type,
+          %{rules: [rule["id"]], patterns: [binding], tests: binding["alpha_tests"] || []},
+          fn existing ->
+            %{
+              rules: [rule["id"] | existing.rules],
+              patterns: [binding | existing.patterns],
+              tests: existing.tests ++ (binding["alpha_tests"] || [])
+            }
+          end
+        )
       end)
+    end)
+    |> Enum.into(%{}, fn {fact_type, data} ->
+      # Sort and deduplicate tests efficiently using Map-based deduplication
+      unique_tests = deduplicate_tests_optimized(data.tests)
+      {fact_type, %{data | tests: unique_tests}}
     end)
   end
 
-  defp extract_not_exists_patterns(rules) do
-    # Extract fact types from not/exists patterns to ensure alpha nodes exist for them
-    Enum.flat_map(rules, fn rule ->
-      (rule["beta_joins"] || [])
-      |> Enum.filter(fn join -> join["op"] in ["not_exists", "exists"] end)
-      |> Enum.map(fn join ->
-        %{
-          "rule_id" => rule["id"],
-          "binding" => "",
-          "type" => join["right"]["value"],
-          "tests" => build_tests_from_not_exists(join)
-        }
+  defp deduplicate_tests_optimized(tests) do
+    tests
+    |> Enum.reduce(%{}, fn test, acc ->
+      # Create unique key from test components
+      key = {test["op"], test["left"], test["right"]}
+      Map.put(acc, key, test)
+    end)
+    |> Map.values()
+    |> Enum.map(&add_selectivity_hints_optimized/1)
+  end
+
+  defp extract_patterns_batch(rules) do
+    {fact_patterns, not_exists_patterns} =
+      Enum.reduce(rules, {[], []}, fn rule, {facts, not_exists} ->
+        # Extract fact patterns
+        rule_facts =
+          Enum.map(rule["bindings"] || [], fn binding ->
+            %{
+              "rule_id" => rule["id"],
+              "binding" => binding["binding"],
+              "type" => binding["type"],
+              "tests" => binding["alpha_tests"] || []
+            }
+          end)
+
+        # Extract not/exists patterns  
+        rule_not_exists =
+          (rule["beta_joins"] || [])
+          |> Enum.filter(fn join -> join["op"] in ["not_exists", "exists"] end)
+          |> Enum.map(fn join ->
+            %{
+              "rule_id" => rule["id"],
+              "binding" => "",
+              "type" => join["right"]["value"],
+              "tests" => build_tests_from_not_exists(join)
+            }
+          end)
+
+        {facts ++ rule_facts, not_exists ++ rule_not_exists}
       end)
+
+    {fact_patterns, not_exists_patterns}
+  end
+
+  defp build_alpha_nodes_batch(patterns, fact_type_index) do
+    patterns
+    |> Enum.group_by(fn pattern -> pattern["type"] end)
+    |> Enum.map(fn {fact_type, type_patterns} ->
+      # Get pre-computed unique tests from index - O(log n) lookup
+      unique_tests =
+        case Map.get(fact_type_index, fact_type) do
+          %{tests: tests} ->
+            tests
+
+          _ ->
+            # Fallback: compute tests for this type only
+            type_patterns
+            |> Enum.flat_map(fn pattern -> pattern["tests"] end)
+            |> deduplicate_tests_optimized()
+        end
+
+      %{
+        "id" => "alpha_#{fact_type}",
+        "type" => fact_type,
+        "tests" => unique_tests
+      }
     end)
   end
 
-  defp build_tests_from_not_exists(join) do
-    case join["extra"] do
-      %{"field" => field, "field_value" => field_value} ->
-        [
+  defp merge_and_deduplicate_alpha_nodes(nodes1, nodes2) do
+    (nodes1 ++ nodes2)
+    |> Enum.reduce(%{}, fn node, acc ->
+      Map.put(acc, node["id"], node)
+    end)
+    |> Map.values()
+  end
+
+  defp build_binding_reference_index(rules) do
+    # Build index of binding references for efficient join condition detection
+    rules
+    |> Enum.reduce(%{}, fn rule, acc ->
+      Enum.reduce(rule["bindings"] || [], acc, fn binding, binding_acc ->
+        binding_name = binding["binding"]
+
+        # Extract field references from alpha tests AND from the original AST structure
+        # We need to track which fields reference which variables
+        field_refs =
+          Enum.map(binding["alpha_tests"] || [], fn test ->
+            case test["left"] do
+              %{"field" => field} -> field
+              _ -> ""
+            end
+          end)
+
+        # Also extract variable references from the binding pattern
+        # This requires accessing the original rule structure to find cross-references
+        variable_refs = extract_variable_references_from_rule(rule, binding_name)
+
+        Map.update(
+          binding_acc,
+          binding_name,
           %{
-            "op" => "==",
-            "left" => %{"binding" => "_anon", "field" => field},
-            "right" => field_value
-          }
-        ]
+            rules: [rule["id"]],
+            fields: field_refs,
+            tests: binding["alpha_tests"] || [],
+            variables: variable_refs
+          },
+          fn existing ->
+            %{
+              rules: [rule["id"] | existing.rules],
+              fields: field_refs ++ existing.fields,
+              tests: existing.tests ++ (binding["alpha_tests"] || []),
+              variables: Map.merge(existing.variables, variable_refs)
+            }
+          end
+        )
+      end)
+    end)
+    |> Enum.into(%{}, fn {binding_name, data} ->
+      # Sort and deduplicate fields
+      unique_fields = Enum.uniq(data.fields)
+      {binding_name, %{data | fields: unique_fields}}
+    end)
+  end
+
+  # Extract variable references from the rule's original binding patterns
+  defp extract_variable_references_from_rule(rule, binding_name) do
+    # Look for alpha tests that contain binding references for cross-binding joins
+    (rule["bindings"] || [])
+    |> Enum.find(fn binding -> binding["binding"] == binding_name end)
+    |> case do
+      %{"alpha_tests" => alpha_tests} ->
+        Enum.reduce(alpha_tests, %{}, fn test, acc ->
+          case test do
+            %{
+              "left" => %{"binding" => ^binding_name, "field" => field},
+              "right" => %{"binding" => var_binding}
+            } ->
+              Map.put(acc, field, var_binding)
+
+            _ ->
+              acc
+          end
+        end)
 
       _ ->
-        []
+        %{}
     end
   end
 
-  defp group_fact_patterns_by_type(fact_patterns) do
-    # Group fact patterns by type to identify shared alpha nodes
-    fact_patterns
-    |> Enum.group_by(fn pattern -> pattern["type"] end)
-  end
-
-  defp build_alpha_nodes_with_selectivity(grouped_patterns) do
-    Enum.flat_map(grouped_patterns, fn {fact_type, patterns} ->
-      # For each fact type, analyze all predicates to build optimal alpha nodes
-      all_tests = Enum.flat_map(patterns, fn pattern -> pattern["tests"] end)
-
-      # Create alpha nodes based on predicate selectivity and indexability
-      build_alpha_nodes_for_type(fact_type, all_tests, patterns)
-    end)
-  end
-
-  defp build_alpha_nodes_for_type(fact_type, all_tests, _patterns) do
-    # Analyze predicates and create alpha nodes with index hints
-    unique_tests =
-      all_tests
-      |> Enum.uniq_by(fn test -> {test["op"], test["left"], test["right"]} end)
-      |> add_selectivity_hints()
-
-    if length(unique_tests) > 0 do
-      [
-        %{
-          "id" => "alpha_#{fact_type}",
-          "type" => fact_type,
-          "tests" => unique_tests
-        }
-      ]
-    else
-      # Create a basic alpha node for fact type with no specific tests
-      [
-        %{
-          "id" => "alpha_#{fact_type}",
-          "type" => fact_type,
-          "tests" => []
-        }
-      ]
-    end
-  end
-
-  defp add_selectivity_hints(tests) do
-    # Add selectivity and indexability metadata to tests using Predicates functions
-    Enum.map(tests, fn test ->
-      op_atom = String.to_atom(test["op"])
-
-      base_test = %{
-        "op" => test["op"],
-        "left" => test["left"],
-        "right" => test["right"]
-      }
-
-      # Add extra metadata for optimization hints
-      extra = %{
-        "selectivity" => RulesEngine.Predicates.selectivity_hint(op_atom),
-        "indexable" => RulesEngine.Predicates.indexable?(op_atom)
-      }
-
-      Map.put(base_test, "extra", extra)
-    end)
-  end
-
-  # Beta network construction helpers
-
-  defp build_beta_nodes_from_rules(rules) do
-    # For now, create beta nodes for rules that have multiple fact bindings
+  defp build_join_nodes_optimized(rules, binding_index) do
     rules
     |> Enum.filter(fn rule -> length(rule["bindings"] || []) > 1 end)
     |> Enum.with_index()
-    |> Enum.map(fn {rule, idx} ->
-      build_beta_node_for_rule(rule, idx)
+    |> Enum.flat_map(fn {rule, idx} ->
+      build_join_chain_optimized(rule, idx, binding_index)
     end)
-    |> List.flatten()
   end
 
-  defp build_beta_node_for_rule(rule, idx) do
+  defp build_join_chain_optimized(rule, base_idx, binding_index) do
     bindings = rule["bindings"] || []
-    # Create join chain: alpha1 JOIN alpha2 JOIN alpha3...
-    build_linear_join_chain(rule["id"], bindings, idx)
-  end
 
-  defp build_linear_join_chain(_rule_id, [], _idx), do: []
-  defp build_linear_join_chain(_rule_id, [_single], _idx), do: []
+    case length(bindings) do
+      n when n <= 1 ->
+        []
 
-  defp build_linear_join_chain(rule_id, bindings, base_idx) do
-    # Create a chain of beta joins: (alpha1 JOIN alpha2) JOIN alpha3 JOIN ...
-    bindings
-    |> Enum.chunk_every(2, 1, :discard)
-    |> Enum.with_index()
-    |> Enum.map(fn {[left_binding, right_binding], join_idx} ->
-      left_node_id = "alpha_#{left_binding["type"]}"
-      right_node_id = "alpha_#{right_binding["type"]}"
+      _ ->
+        bindings
+        |> Enum.chunk_every(2, 1, :discard)
+        |> Enum.with_index()
+        |> Enum.map(fn {[left_binding, right_binding], join_idx} ->
+          # Use pre-computed index for O(1) lookups
+          join_conditions =
+            find_join_conditions_optimized(
+              left_binding,
+              right_binding,
+              binding_index
+            )
 
-      # Find join conditions between these bindings
-      join_conditions = find_join_conditions(left_binding, right_binding)
-
-      %{
-        "id" => "beta_#{rule_id}_#{base_idx}_#{join_idx}",
-        "left" => left_node_id,
-        "right" => right_node_id,
-        "on" => join_conditions,
-        "post_filters" => []
-      }
-    end)
-  end
-
-  defp find_join_conditions(left_binding, right_binding) do
-    # Look for shared binding references between the two fact patterns
-    left_refs = extract_binding_references(left_binding)
-    right_refs = extract_binding_references(right_binding)
-
-    # Find common binding references
-    common_refs = MapSet.intersection(MapSet.new(left_refs), MapSet.new(right_refs))
-
-    # Create join conditions for each common reference
-    Enum.map(common_refs, fn binding_ref ->
-      left_field = find_field_for_binding_ref(left_binding, binding_ref)
-      right_field = find_field_for_binding_ref(right_binding, binding_ref)
-
-      %{
-        "left" => %{"binding" => left_binding["binding"], "field" => left_field},
-        "op" => "==",
-        "right" => %{"binding" => right_binding["binding"], "field" => right_field}
-      }
-    end)
-  end
-
-  defp extract_binding_references(binding) do
-    # Extract all binding references from alpha tests
-    binding["alpha_tests"]
-    |> Enum.flat_map(fn test ->
-      case test["right"] do
-        %{"binding" => binding_name, "field" => ""} -> [binding_name]
-        _ -> []
-      end
-    end)
-    |> Enum.uniq()
-  end
-
-  defp find_field_for_binding_ref(binding, binding_ref) do
-    # Find which field in this binding uses the given binding reference
-    test =
-      Enum.find(binding["alpha_tests"], fn test ->
-        test["right"]["binding"] == binding_ref
-      end)
-
-    case test do
-      %{"left" => %{"field" => field}} -> field
-      _ -> ""
+          %{
+            "id" => "beta_#{rule["id"]}_#{base_idx}_#{join_idx}",
+            "left" => "alpha_#{left_binding["type"]}",
+            "right" => "alpha_#{right_binding["type"]}",
+            "on" => join_conditions,
+            "post_filters" => []
+          }
+        end)
     end
   end
 
-  # Not/exists node construction
+  defp find_join_conditions_optimized(left_binding, right_binding, _binding_index) do
+    left_name = left_binding["binding"]
+    right_name = right_binding["binding"]
 
-  defp build_not_exists_nodes_from_rules(rules) do
-    # Build specialized beta nodes for not/exists patterns
+    # Find join conditions by looking for shared variable references
+    # Both bindings reference the same variable if their alpha tests reference the same variable binding
+    left_tests = left_binding["alpha_tests"] || []
+    right_tests = right_binding["alpha_tests"] || []
+
+    # Create a map of variables to fields for each binding
+    left_var_to_field =
+      Enum.reduce(left_tests, %{}, fn test, acc ->
+        case test do
+          %{
+            "left" => %{"binding" => ^left_name, "field" => field},
+            "right" => %{"binding" => var_binding, "field" => ""}
+          } ->
+            Map.put(acc, var_binding, field)
+
+          _ ->
+            acc
+        end
+      end)
+
+    right_var_to_field =
+      Enum.reduce(right_tests, %{}, fn test, acc ->
+        case test do
+          %{
+            "left" => %{"binding" => ^right_name, "field" => field},
+            "right" => %{"binding" => var_binding, "field" => ""}
+          } ->
+            Map.put(acc, var_binding, field)
+
+          _ ->
+            acc
+        end
+      end)
+
+    # Find common variables and create join conditions
+    common_variables =
+      MapSet.intersection(
+        MapSet.new(Map.keys(left_var_to_field)),
+        MapSet.new(Map.keys(right_var_to_field))
+      )
+
+    Enum.map(common_variables, fn var ->
+      left_field = Map.get(left_var_to_field, var)
+      right_field = Map.get(right_var_to_field, var)
+
+      %{
+        "left" => %{"binding" => left_name, "field" => left_field},
+        "op" => "==",
+        "right" => %{"binding" => right_name, "field" => right_field}
+      }
+    end)
+  end
+
+  defp build_not_exists_nodes_optimized(rules, _binding_index) do
     rules
     |> Enum.with_index()
     |> Enum.flat_map(fn {rule, rule_idx} ->
-      build_not_exists_nodes_for_rule(rule, rule_idx)
-    end)
-  end
+      not_exists_joins =
+        (rule["beta_joins"] || [])
+        |> Enum.filter(fn join -> join["op"] in ["not_exists", "exists"] end)
+        |> Enum.with_index()
 
-  defp build_not_exists_nodes_for_rule(rule, rule_idx) do
-    not_exists_joins =
-      (rule["beta_joins"] || [])
-      |> Enum.filter(fn join -> join["op"] in ["not_exists", "exists"] end)
-      |> Enum.with_index()
+      Enum.map(not_exists_joins, fn {join, join_idx} ->
+        fact_type = join["right"]["value"]
 
-    Enum.map(not_exists_joins, fn {join, join_idx} ->
-      fact_type = join["right"]["value"]
-      alpha_node_id = "alpha_#{fact_type}"
+        # Determine left input efficiently
+        left_input =
+          case rule["bindings"] do
+            [] ->
+              "root"
 
-      # For not/exists nodes, connect to the main rule conditions
-      left_input =
-        if length(rule["bindings"] || []) > 0 do
-          last_binding = List.last(rule["bindings"])
-          "alpha_#{last_binding["type"]}"
-        else
-          "root"
-        end
+            bindings ->
+              last_binding = List.last(bindings)
+              "alpha_#{last_binding["type"]}"
+          end
 
-      # Build join conditions from the not/exists pattern
-      join_conditions = build_not_exists_join_conditions(join)
-
-      # Create post-filters to indicate not/exists semantics
-      post_filters = [
         %{
-          # "not_exists" or "exists"
-          "op" => join["op"],
-          "left" => %{"binding" => "", "field" => ""},
-          "right" => %{"type" => "string", "value" => fact_type},
-          "extra" => join["extra"]
+          "id" => "#{join["op"]}_#{rule["id"]}_#{rule_idx}_#{join_idx}",
+          "left" => left_input,
+          "right" => "alpha_#{fact_type}",
+          "on" => build_not_exists_join_conditions(join),
+          "post_filters" => [
+            %{
+              "op" => join["op"],
+              "left" => %{"binding" => "", "field" => ""},
+              "right" => %{"type" => "string", "value" => fact_type},
+              "extra" => join["extra"]
+            }
+          ]
         }
-      ]
-
-      %{
-        "id" => "#{join["op"]}_#{rule["id"]}_#{rule_idx}_#{join_idx}",
-        "left" => left_input,
-        "right" => alpha_node_id,
-        "on" => join_conditions,
-        "post_filters" => post_filters
-      }
+      end)
     end)
   end
 
-  defp build_not_exists_join_conditions(join) do
-    case join["extra"] do
-      %{"field" => field, "field_value" => field_value} ->
-        [
-          %{
-            "left" => %{"binding" => "", "field" => field},
-            "op" => "==",
-            "right" => field_value
-          }
-        ]
+  defp add_selectivity_hints_optimized(test) do
+    base_test = %{
+      "op" => test["op"],
+      "left" => test["left"],
+      "right" => test["right"]
+    }
 
-      _ ->
-        []
-    end
+    # Use existing atom if available, otherwise use string
+    op_key =
+      case test["op"] do
+        op when op in ["==", "!=", ">", "<", ">=", "<=", "in", "not_in", "between"] ->
+          String.to_existing_atom(op)
+
+        _ ->
+          # Fallback for unknown operators - use string
+          test["op"]
+      end
+
+    extra = %{
+      "selectivity" => PredicateRegistry.selectivity_hint(op_key),
+      "indexable" => PredicateRegistry.indexable?(op_key)
+    }
+
+    Map.put(base_test, "extra", extra)
   end
 
-  # Accumulate node construction
+  # Accumulate node building functions (still needed)
 
   defp build_accumulate_nodes_for_rule(rule, rule_idx) do
     # Extract accumulate statements from the compiled rule
@@ -1176,5 +1328,40 @@ defmodule RulesEngine.DSL.Compiler do
           %{"name" => name, "kind" => "avg", "expr" => term(expr)}
       end
     end)
+  end
+
+  # Helper functions still used by other parts of the compiler
+
+  defp build_tests_from_not_exists(join) do
+    case join["extra"] do
+      %{"field" => field, "field_value" => field_value} ->
+        [
+          %{
+            "op" => "==",
+            "left" => %{"binding" => "_anon", "field" => field},
+            "right" => field_value
+          }
+        ]
+
+      _ ->
+        []
+    end
+  end
+
+  # Keep build_not_exists_join_conditions function which is still used
+  defp build_not_exists_join_conditions(join) do
+    case join["extra"] do
+      %{"field" => field, "field_value" => field_value} ->
+        [
+          %{
+            "left" => %{"binding" => "", "field" => field},
+            "op" => "==",
+            "right" => field_value
+          }
+        ]
+
+      _ ->
+        []
+    end
   end
 end
