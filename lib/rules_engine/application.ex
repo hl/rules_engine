@@ -9,12 +9,29 @@ defmodule RulesEngine.Application do
   def start(_type, _args) do
     children = [
       # Start the Registry for tenant engines
-      RulesEngine.Registry
+      RulesEngine.Registry,
+      # Start the Telemetry handler for performance monitoring
+      RulesEngine.Telemetry,
+      # Start the Compilation cache for performance optimization
+      RulesEngine.CompilationCache,
+      # Start the Predicate registry for pluggable predicates
+      RulesEngine.Engine.PredicateRegistry,
+      # Start the Calculator registry for pluggable calculators
+      RulesEngine.Engine.CalculatorRegistry
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: RulesEngine.Supervisor]
-    Supervisor.start_link(children, opts)
+
+    case Supervisor.start_link(children, opts) do
+      {:ok, pid} ->
+        # Attach telemetry handlers after successful start
+        RulesEngine.Telemetry.attach_handlers()
+        {:ok, pid}
+
+      error ->
+        error
+    end
   end
 end

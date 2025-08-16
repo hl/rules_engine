@@ -148,6 +148,7 @@ defmodule RulesEngine.Engine.Agenda do
       fired_count: agenda.fired_count,
       policy: agenda.policy,
       activations: all_activations(agenda),
+      memory_usage: memory_usage(agenda),
       created_at: agenda.created_at
     }
   end
@@ -188,5 +189,29 @@ defmodule RulesEngine.Engine.Agenda do
     filtered_activations = Enum.reject(activations, &(&1 == activation))
 
     :queue.from_list(filtered_activations)
+  end
+
+  @doc """
+  Calculate approximate memory usage of the agenda.
+  """
+  @spec memory_usage(t()) :: non_neg_integer()
+  def memory_usage(%__MODULE__{} = agenda) do
+    # Estimate size of activations queue
+    activations_list = :queue.to_list(agenda.activations)
+
+    activations_memory =
+      Enum.reduce(activations_list, 0, fn activation, acc ->
+        activation_size = :erlang.external_size(activation)
+        acc + activation_size
+      end)
+
+    # Recent activations memory
+    recent_memory =
+      Enum.reduce(agenda.recent, 0, fn activation, acc ->
+        activation_size = :erlang.external_size(activation)
+        acc + activation_size
+      end)
+
+    activations_memory + recent_memory
   end
 end

@@ -50,6 +50,28 @@ defmodule RulesEngine.Engine.WorkingMemory do
   end
 
   @doc """
+  Calculate approximate memory usage of working memory structures.
+  """
+  @spec memory_usage(t()) :: non_neg_integer()
+  def memory_usage(%__MODULE__{} = wm) do
+    facts_memory = estimate_facts_memory(wm.facts)
+    index_memory = estimate_index_memory(wm.type_index)
+    alpha_memory = estimate_alpha_memory(wm.alpha_memories)
+    beta_memory = estimate_beta_memory(wm.beta_memories)
+    token_memory = estimate_token_memory(wm.token_tables)
+
+    facts_memory + index_memory + alpha_memory + beta_memory + token_memory
+  end
+
+  @doc """
+  Get the size of working memory (number of facts).
+  """
+  @spec size(t()) :: non_neg_integer()
+  def size(working_memory) do
+    map_size(working_memory.facts)
+  end
+
+  @doc """
   Assert facts into working memory and propagate through network.
   """
   @spec assert_facts(state :: map(), facts :: [fact()]) :: {map(), [fact()]}
@@ -220,5 +242,40 @@ defmodule RulesEngine.Engine.WorkingMemory do
 
         %{wm | facts: new_facts, type_index: new_type_index}
     end
+  end
+
+  # Memory estimation helper functions
+
+  defp estimate_facts_memory(facts) do
+    facts
+    |> Enum.reduce(0, fn {_id, fact}, acc ->
+      fact_size = :erlang.external_size(fact)
+      acc + fact_size
+    end)
+  end
+
+  defp estimate_index_memory(type_index) do
+    type_index
+    |> Enum.reduce(0, fn {type, id_set}, acc ->
+      type_size = :erlang.external_size(type)
+      # Estimate 8 bytes per ID
+      set_size = MapSet.size(id_set) * 8
+      acc + type_size + set_size
+    end)
+  end
+
+  defp estimate_alpha_memory(alpha_memories) do
+    # Estimate 100 bytes per alpha memory
+    map_size(alpha_memories) * 100
+  end
+
+  defp estimate_beta_memory(beta_memories) do
+    # Estimate 200 bytes per beta memory
+    map_size(beta_memories) * 200
+  end
+
+  defp estimate_token_memory(token_tables) do
+    # Estimate 150 bytes per token table
+    map_size(token_tables) * 150
   end
 end

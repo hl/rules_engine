@@ -36,7 +36,7 @@ defmodule RulesEngine.Engine do
   use GenServer
   require Logger
 
-  alias RulesEngine.Engine.{Activation, Agenda, State, Tracing, WorkingMemory}
+  alias RulesEngine.Engine.{Activation, Agenda, MemoryManager, State, Tracing, WorkingMemory}
 
   # Client API
 
@@ -47,7 +47,68 @@ defmodule RulesEngine.Engine do
   - `:trace` - Enable tracing (default: false)
   - `:partition_count` - Number of internal partitions (default: 1)
   - `:fire_limit` - Max activations per run (default: 1000)
-  - `:agenda_policy` - Module implementing agenda ordering
+  - `:memory_limit_mb` - Memory limit in MB per tenant (default: nil - no limit)
+  - `:memory_check_interval` - Check memory usage every N operations (default: 1000)
+  - `:memory_eviction_policy` - Policy when memory limit exceeded (:lru, :oldest, :random) (default: :lru)
+  - `:agenda_policy` - Module implementing agenda ordering, or atom for built-in policies
+    (:default, :fifo, :lifo, :salience_only). Defaults to `:default`
+  - `:refraction_policy` - Module implementing refraction control, or atom for built-in policies
+    (:default, :none, :per_rule, :ttl). Defaults to `:default`
+  - `:refraction_opts` - Options for refraction policy (e.g., ttl_seconds for TTL policy)
+
+  ## Built-in Agenda Policies
+
+  - `:default` - Salience + recency + specificity (recommended)
+  - `:fifo` - First-in-first-out (oldest activations first)
+  - `:lifo` - Last-in-first-out (newest activations first)
+  - `:salience_only` - Only consider rule salience, ignore timing
+
+  Custom policies must implement `RulesEngine.Engine.AgendaPolicy` behaviour.
+
+  ## Built-in Refraction Policies
+
+  - `:default` - Per-activation refraction (classic RETE behaviour)
+  - `:none` - Disable refraction entirely (allow repeated firing)
+  - `:per_rule` - Per-rule refraction (rule fires once per session max)
+  - `:ttl` - Time-based refraction with configurable expiry
+
+  Custom policies must implement `RulesEngine.Engine.RefractionPolicy` behaviour.
+
+  ## Examples
+
+      # Using built-in policy by atom
+      {:ok, pid} = Engine.start_tenant(:tenant1, network, agenda_policy: :fifo)
+
+      # Using built-in policy by module
+      {:ok, pid} = Engine.start_tenant(:tenant1, network, agenda_policy: RulesEngine.Engine.LifoAgendaPolicy)
+
+      # Using custom policy (must implement AgendaPolicy behaviour)
+      defmodule MyCustomPolicy do
+        @behaviour RulesEngine.Engine.AgendaPolicy
+        
+        def compare(act1, act2) do
+          # Custom prioritisation logic
+          act1.specificity > act2.specificity
+        end
+        
+        def name, do: "custom_specificity_first"
+        def description, do: "Orders by specificity only"
+      end
+      
+      {:ok, pid} = Engine.start_tenant(:tenant1, network, agenda_policy: MyCustomPolicy)
+
+      # Using refraction policies
+      {:ok, pid} = Engine.start_tenant(:tenant2, network, refraction_policy: :none)
+      {:ok, pid} = Engine.start_tenant(:tenant3, network, 
+                     refraction_policy: :ttl, refraction_opts: [ttl_seconds: 1800])
+
+      # Discover available policies
+      agenda_policies = RulesEngine.Engine.AgendaPolicyRegistry.list_policies()
+      refraction_policies = RulesEngine.Engine.RefractionPolicyRegistry.list_policies()
+      
+      # Register custom predicates (see PredicateProvider behaviour)
+      :ok = RulesEngine.Engine.PredicateRegistry.register_provider(MyApp.DomainPredicates)
+
   """
   @spec start_tenant(tenant_key :: term(), network :: map(), opts :: keyword()) ::
           {:ok, pid()} | {:error, term()}
@@ -236,8 +297,27 @@ defmodule RulesEngine.Engine do
 
   @impl true
   def handle_call({:run, opts}, _from, state) do
+    start_time = System.monotonic_time()
     fire_limit = Keyword.get(opts, :fire_limit, state.fire_limit)
+
+    :telemetry.execute([:rules_engine, :engine, :run, :start], %{}, %{
+      tenant_id: state.tenant_id,
+      fire_limit: fire_limit,
+      agenda_size: Agenda.size(state.agenda),
+      working_memory_size: WorkingMemory.size(state.working_memory)
+    })
+
     {new_state, outputs} = run_agenda(state, fire_limit)
+
+    duration = System.monotonic_time() - start_time
+
+    :telemetry.execute([:rules_engine, :engine, :run, :stop], %{duration: duration}, %{
+      tenant_id: state.tenant_id,
+      fire_limit: fire_limit,
+      fires_executed: length(outputs),
+      agenda_size_after: Agenda.size(new_state.agenda),
+      working_memory_size_after: WorkingMemory.size(new_state.working_memory)
+    })
 
     result = format_outputs(outputs, opts)
     {:reply, {:ok, result}, new_state}
@@ -383,9 +463,6 @@ defmodule RulesEngine.Engine do
   end
 
   defp fire_activation(state, activation) do
-    # Check refraction - don't fire if already fired with same token signature
-    refraction_key = Activation.refraction_key(activation)
-
     # Trace activation lifecycle
     new_tracer =
       if state.tracing_enabled do
@@ -394,48 +471,59 @@ defmodule RulesEngine.Engine do
         state.tracer
       end
 
-    if MapSet.member?(state.refraction_store, refraction_key) do
-      # Already fired, just remove from agenda
-      new_agenda = Agenda.remove_activation(state.agenda, activation)
-      new_state = %{state | agenda: new_agenda, tracer: new_tracer}
+    # Check refraction using configurable policy
+    case state.refraction_policy.should_refract(
+           activation,
+           state.refraction_store,
+           state.refraction_opts
+         ) do
+      {:refract, updated_store} ->
+        # Already fired, just remove from agenda
+        new_agenda = Agenda.remove_activation(state.agenda, activation)
 
-      outputs = %{
-        fired: nil,
-        derived: [],
-        trace: if(state.tracing_enabled, do: [trace_refraction_event(activation)], else: []),
-        refracted: activation
-      }
+        new_state = %{
+          state
+          | agenda: new_agenda,
+            tracer: new_tracer,
+            refraction_store: updated_store
+        }
 
-      {new_state, outputs}
-    else
-      # Fire the activation and add to refraction store
-      {intermediate_state, outputs} =
-        execute_rule_actions(
-          %{state | tracer: new_tracer},
-          activation
-        )
+        outputs = %{
+          fired: nil,
+          derived: [],
+          trace: if(state.tracing_enabled, do: [trace_refraction_event(activation)], else: []),
+          refracted: activation
+        }
 
-      # Trace derived facts if any
-      final_tracer = trace_derived_facts(state, outputs, intermediate_state, activation)
+        {new_state, outputs}
 
-      # Add to refraction store and remove from agenda
-      new_refraction_store = MapSet.put(intermediate_state.refraction_store, refraction_key)
-      final_agenda = Agenda.remove_activation(intermediate_state.agenda, activation)
+      {:fire, updated_store} ->
+        # Fire the activation
+        {intermediate_state, outputs} =
+          execute_rule_actions(
+            %{state | tracer: new_tracer, refraction_store: updated_store},
+            activation
+          )
 
-      final_state = %{
-        intermediate_state
-        | agenda: final_agenda,
-          refraction_store: new_refraction_store,
-          tracer: final_tracer
-      }
+        # Trace derived facts if any
+        final_tracer = trace_derived_facts(state, outputs, intermediate_state, activation)
 
-      final_outputs =
-        Map.merge(outputs, %{
-          fired: activation,
-          trace: build_trace_events(state, activation, outputs)
-        })
+        # Remove from agenda
+        final_agenda = Agenda.remove_activation(intermediate_state.agenda, activation)
 
-      {final_state, final_outputs}
+        final_state = %{
+          intermediate_state
+          | agenda: final_agenda,
+            tracer: final_tracer
+        }
+
+        final_outputs =
+          Map.merge(outputs, %{
+            fired: activation,
+            trace: build_trace_events(state, activation, outputs)
+          })
+
+        {final_state, final_outputs}
     end
   end
 

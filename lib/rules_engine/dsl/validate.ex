@@ -4,7 +4,8 @@ defmodule RulesEngine.DSL.Validate do
   Ensures supported ops and basic operand shapes; checks binding references exist.
   """
 
-  alias RulesEngine.Predicates
+  alias RulesEngine.Engine.CalculatorRegistry
+  alias RulesEngine.Engine.PredicateRegistry
 
   @type error :: %{code: atom(), message: String.t(), path: term()}
 
@@ -135,7 +136,7 @@ defmodule RulesEngine.DSL.Validate do
     op_atom = normalize_op(op)
 
     errs =
-      if op_atom in Predicates.supported_ops(),
+      if PredicateRegistry.supported?(op_atom),
         do: [],
         else: [
           %{code: :unsupported_op, message: "unsupported op #{inspect(op)}", path: path}
@@ -155,14 +156,14 @@ defmodule RulesEngine.DSL.Validate do
 
     # Check if operation is supported
     errs =
-      if op_atom in Predicates.supported_ops(),
+      if PredicateRegistry.supported?(op_atom),
         do: errs,
         else: [
           %{code: :unsupported_op, message: "unsupported op #{inspect(op)}", path: path} | errs
         ]
 
     # Apply predicate-specific type expectations
-    expectations = Predicates.expectations(op_atom)
+    expectations = PredicateRegistry.expectations(op_atom)
     type_errors = validate_predicate_expectations(op_atom, l, r, expectations, path)
 
     errs ++ type_errors ++ validate_term(l, bindings, path) ++ validate_term(r, bindings, path)
@@ -250,8 +251,40 @@ defmodule RulesEngine.DSL.Validate do
     end
   end
 
-  defp validate_term({:call, _name, args}, bindings, path),
-    do: Enum.flat_map(args, &validate_term(&1, bindings, path))
+  defp validate_term({:call, name, args}, bindings, path) do
+    function_name = String.to_atom(name)
+    arg_count = length(args)
+
+    function_errors =
+      case CalculatorRegistry.function_info(function_name) do
+        {:ok, %{arity: expected_arity}} when expected_arity != arg_count ->
+          [
+            %{
+              code: :invalid_arity,
+              message:
+                "function #{name}/#{arg_count} called but #{name}/#{expected_arity} expected",
+              path: path ++ [:function_call, name]
+            }
+          ]
+
+        {:ok, _info} ->
+          []
+
+        {:error, :not_found} ->
+          [
+            %{
+              code: :unknown_function,
+              message: "unknown calculator function #{name}",
+              path: path ++ [:function_call, name]
+            }
+          ]
+      end
+
+    # Validate arguments contain valid bindings
+    arg_errors = Enum.flat_map(args, &validate_term(&1, bindings, path))
+
+    function_errors ++ arg_errors
+  end
 
   defp validate_term({:arith, _op, l, r}, bindings, path),
     do: validate_term(l, bindings, path) ++ validate_term(r, bindings, path)
