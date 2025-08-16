@@ -7,6 +7,9 @@ defmodule RulesEngine.Application do
 
   @impl true
   def start(_type, _args) do
+    # Get cache configuration from application environment
+    cache_opts = Application.get_env(:rules_engine, :cache, [])
+
     children = [
       # Start the Registry for tenant engines
       RulesEngine.Registry,
@@ -15,7 +18,7 @@ defmodule RulesEngine.Application do
       # Start the Telemetry handler for performance monitoring
       RulesEngine.Telemetry,
       # Start the Compilation cache for performance optimization
-      RulesEngine.CompilationCache,
+      {RulesEngine.CompilationCache, cache_opts},
       # Start the Predicate registry for pluggable predicates
       RulesEngine.Engine.PredicateRegistry,
       # Start the Calculator registry for pluggable calculators

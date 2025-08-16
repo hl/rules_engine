@@ -79,7 +79,7 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 - [x] **BLOCKS PRODUCTION**: Pluggable calculator functions - enable host applications to add domain-specific calculations
 - [x] **BLOCKS PRODUCTION**: Configurable memory limits per tenant - prevent resource exhaustion
 - [x] **BLOCKS PRODUCTION**: Configurable telemetry backends - allow host applications to choose monitoring systems
-- [ ] Configurable compilation cache settings - TTL, size limits, eviction policies
+- [x] Configurable compilation cache settings - TTL, size limits, eviction policies
 - [ ] Configurable error formatting - allow host applications to customize error presentation
 - [ ] Plugin system for custom DSL extensions - enable domain-specific syntax
 - [ ] Configurable network building strategies - balance compilation speed vs runtime performance

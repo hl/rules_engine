@@ -20,6 +20,7 @@ defmodule RulesEngine.CompilationCache do
       :tenant_id,
       :ir,
       :compiled_at,
+      :expires_at,
       :access_count,
       :last_accessed
     ]
@@ -54,7 +55,8 @@ defmodule RulesEngine.CompilationCache do
   Options:
   - `:max_entries` - Maximum number of cached entries (default: 1000)
   - `:max_memory_mb` - Maximum memory usage in MB (default: 100)
-  - `:eviction_policy` - `:lru` or `:lfu` (default: :lru)
+  - `:ttl_seconds` - Time-to-live for cache entries in seconds (default: 3600, 0 = no TTL)
+  - `:eviction_policy` - `:lru`, `:lfu`, or `:ttl` (default: :lru)
   """
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, opts, name: __MODULE__)
@@ -68,17 +70,27 @@ defmodule RulesEngine.CompilationCache do
   def get(checksum, tenant_id) do
     case :ets.lookup(@table_name, {checksum, tenant_id}) do
       [{_key, entry}] ->
-        # Update access statistics
-        updated_entry = %{
-          entry
-          | access_count: entry.access_count + 1,
-            last_accessed: DateTime.utc_now()
-        }
+        now = DateTime.utc_now()
 
-        :ets.insert(@table_name, {{checksum, tenant_id}, updated_entry})
+        # Check if entry has expired
+        if entry.expires_at && DateTime.compare(now, entry.expires_at) == :gt do
+          # Entry has expired, remove it and return miss
+          :ets.delete(@table_name, {checksum, tenant_id})
+          GenServer.cast(__MODULE__, :cache_miss)
+          :miss
+        else
+          # Update access statistics
+          updated_entry = %{
+            entry
+            | access_count: entry.access_count + 1,
+              last_accessed: now
+          }
 
-        GenServer.cast(__MODULE__, :cache_hit)
-        {:hit, entry.ir}
+          :ets.insert(@table_name, {{checksum, tenant_id}, updated_entry})
+
+          GenServer.cast(__MODULE__, :cache_hit)
+          {:hit, entry.ir}
+        end
 
       [] ->
         GenServer.cast(__MODULE__, :cache_miss)
@@ -90,17 +102,7 @@ defmodule RulesEngine.CompilationCache do
   Put IR in cache for the given checksum and tenant.
   """
   def put(checksum, tenant_id, ir) do
-    entry = %CacheEntry{
-      checksum: checksum,
-      tenant_id: tenant_id,
-      ir: ir,
-      compiled_at: DateTime.utc_now(),
-      access_count: 1,
-      last_accessed: DateTime.utc_now()
-    }
-
-    :ets.insert(@table_name, {{checksum, tenant_id}, entry})
-    GenServer.cast(__MODULE__, :cache_put)
+    GenServer.call(__MODULE__, {:cache_put, checksum, tenant_id, ir})
   end
 
   @doc """
@@ -148,6 +150,7 @@ defmodule RulesEngine.CompilationCache do
   def init(opts) do
     max_entries = Keyword.get(opts, :max_entries, 1000)
     max_memory_mb = Keyword.get(opts, :max_memory_mb, 100)
+    ttl_seconds = Keyword.get(opts, :ttl_seconds, 3600)
     eviction_policy = Keyword.get(opts, :eviction_policy, :lru)
 
     # Create ETS tables
@@ -160,28 +163,69 @@ defmodule RulesEngine.CompilationCache do
     state = %{
       max_entries: max_entries,
       max_memory_bytes: max_memory_mb * 1024 * 1024,
+      ttl_seconds: ttl_seconds,
       eviction_policy: eviction_policy
     }
 
     Logger.info("CompilationCache started",
       max_entries: max_entries,
       max_memory_mb: max_memory_mb,
+      ttl_seconds: ttl_seconds,
       eviction_policy: eviction_policy
     )
+
+    # Schedule periodic cleanup if TTL is enabled
+    if ttl_seconds > 0 do
+      # Clean up every quarter TTL
+      schedule_cleanup(div(ttl_seconds * 1000, 4))
+    end
 
     {:ok, state}
   end
 
   @impl true
+  def handle_call({:cache_put, checksum, tenant_id, ir}, _from, state) do
+    now = DateTime.utc_now()
+
+    expires_at =
+      if state.ttl_seconds > 0 do
+        DateTime.add(now, state.ttl_seconds, :second)
+      else
+        nil
+      end
+
+    entry = %CacheEntry{
+      checksum: checksum,
+      tenant_id: tenant_id,
+      ir: ir,
+      compiled_at: now,
+      expires_at: expires_at,
+      access_count: 1,
+      last_accessed: now
+    }
+
+    :ets.insert(@table_name, {{checksum, tenant_id}, entry})
+
+    # Check if eviction is needed
+    check_eviction(state)
+
+    update_stats(fn stats ->
+      %{
+        stats
+        | total_entries: :ets.info(@table_name, :size),
+          memory_usage: :ets.info(@table_name, :memory) * :erlang.system_info(:wordsize)
+      }
+    end)
+
+    {:reply, :ok, state}
+  end
+
+  @impl true
   def handle_call({:clear_tenant, tenant_id}, _from, state) do
-    # Find all entries for this tenant
+    # Find all entries for this tenant using match_delete
     pattern = {{:_, tenant_id}, :_}
-    keys = :ets.select(@table_name, [{pattern, [], [:"$1"]}])
+    count = :ets.select_delete(@table_name, [{pattern, [], [true]}])
 
-    # Delete them
-    Enum.each(keys, fn key -> :ets.delete(@table_name, key) end)
-
-    count = length(keys)
     Logger.info("Cleared #{count} cache entries for tenant: #{tenant_id}")
 
     {:reply, {:ok, count}, state}
@@ -213,17 +257,13 @@ defmodule RulesEngine.CompilationCache do
   end
 
   @impl true
-  def handle_cast(:cache_put, state) do
-    # Check if eviction is needed
-    check_eviction(state)
+  def handle_info(:cleanup_expired, state) do
+    cleanup_expired_entries()
 
-    update_stats(fn stats ->
-      %{
-        stats
-        | total_entries: :ets.info(@table_name, :size),
-          memory_usage: :ets.info(@table_name, :memory) * :erlang.system_info(:wordsize)
-      }
-    end)
+    # Schedule next cleanup if TTL is enabled
+    if state.ttl_seconds > 0 do
+      schedule_cleanup(div(state.ttl_seconds * 1000, 4))
+    end
 
     {:noreply, state}
   end
@@ -274,6 +314,16 @@ defmodule RulesEngine.CompilationCache do
 
         :lfu ->
           Enum.sort_by(all_entries, fn {_key, entry} -> entry.access_count end)
+
+        :ttl ->
+          # Sort by expiration time, with nil expires_at coming last
+          Enum.sort_by(all_entries, fn {_key, entry} ->
+            if entry.expires_at do
+              DateTime.to_unix(entry.expires_at)
+            else
+              :infinity
+            end
+          end)
       end
 
     # Evict the oldest/least frequent
@@ -290,5 +340,36 @@ defmodule RulesEngine.CompilationCache do
       policy: policy,
       remaining_entries: :ets.info(@table_name, :size)
     )
+  end
+
+  defp schedule_cleanup(delay_ms) do
+    Process.send_after(self(), :cleanup_expired, delay_ms)
+  end
+
+  defp cleanup_expired_entries do
+    now = DateTime.utc_now()
+
+    # Find all expired entries
+    all_entries = :ets.tab2list(@table_name)
+
+    expired_entries =
+      Enum.filter(all_entries, fn {_key, entry} ->
+        entry.expires_at && DateTime.compare(now, entry.expires_at) == :gt
+      end)
+
+    # Remove expired entries
+    count = length(expired_entries)
+
+    if count > 0 do
+      Enum.each(expired_entries, fn {key, _entry} ->
+        :ets.delete(@table_name, key)
+      end)
+
+      update_stats(fn stats -> %{stats | evictions: stats.evictions + count} end)
+
+      Logger.debug("Cleaned up #{count} expired cache entries")
+    end
+
+    count
   end
 end
