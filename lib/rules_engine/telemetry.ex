@@ -216,15 +216,24 @@ defmodule RulesEngine.Telemetry do
 
   # Telemetry event handlers
 
-  def handle_compile_start(_event, _measurements, metadata, _config) do
+  def handle_compile_start(event, measurements, metadata, _config) do
+    # Dispatch to backend registry for pluggable backends
+    alias RulesEngine.Telemetry.BackendRegistry
+    BackendRegistry.dispatch_event(event, measurements, metadata)
+
+    # Legacy logging (will be replaced by ConsoleBackend)
     Logger.debug("Compilation started",
       tenant_id: metadata.tenant_id,
       source_size: metadata.source_size
     )
   end
 
-  def handle_compile_stop(_event, measurements, metadata, _config) do
+  def handle_compile_stop(event, measurements, metadata, _config) do
     duration_ms = System.convert_time_unit(measurements.duration, :native, :millisecond)
+
+    # Dispatch to backend registry for pluggable backends
+    alias RulesEngine.Telemetry.BackendRegistry
+    BackendRegistry.dispatch_event(event, measurements, metadata)
 
     GenServer.cast(
       __MODULE__,
@@ -237,6 +246,7 @@ defmodule RulesEngine.Telemetry do
        }}
     )
 
+    # Legacy logging (will be replaced by ConsoleBackend)
     Logger.debug("Compilation completed",
       tenant_id: metadata.tenant_id,
       result: metadata.result,
@@ -245,7 +255,12 @@ defmodule RulesEngine.Telemetry do
     )
   end
 
-  def handle_engine_start(_event, _measurements, metadata, _config) do
+  def handle_engine_start(event, measurements, metadata, _config) do
+    # Dispatch to backend registry for pluggable backends
+    alias RulesEngine.Telemetry.BackendRegistry
+    BackendRegistry.dispatch_event(event, measurements, metadata)
+
+    # Legacy logging (will be replaced by ConsoleBackend)
     Logger.debug("Engine run started",
       tenant_id: metadata.tenant_id,
       agenda_size: metadata.agenda_size,
@@ -253,8 +268,12 @@ defmodule RulesEngine.Telemetry do
     )
   end
 
-  def handle_engine_stop(_event, measurements, metadata, _config) do
+  def handle_engine_stop(event, measurements, metadata, _config) do
     duration_ms = System.convert_time_unit(measurements.duration, :native, :millisecond)
+
+    # Dispatch to backend registry for pluggable backends
+    alias RulesEngine.Telemetry.BackendRegistry
+    BackendRegistry.dispatch_event(event, measurements, metadata)
 
     GenServer.cast(
       __MODULE__,
@@ -268,6 +287,7 @@ defmodule RulesEngine.Telemetry do
        }}
     )
 
+    # Legacy logging (will be replaced by ConsoleBackend)
     Logger.debug("Engine run completed",
       tenant_id: metadata.tenant_id,
       duration_ms: duration_ms,

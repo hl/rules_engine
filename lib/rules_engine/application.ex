@@ -10,6 +10,8 @@ defmodule RulesEngine.Application do
     children = [
       # Start the Registry for tenant engines
       RulesEngine.Registry,
+      # Start the Telemetry backend registry for pluggable monitoring
+      RulesEngine.Telemetry.BackendRegistry,
       # Start the Telemetry handler for performance monitoring
       RulesEngine.Telemetry,
       # Start the Compilation cache for performance optimization
