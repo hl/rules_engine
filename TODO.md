@@ -80,7 +80,7 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 - [x] **BLOCKS PRODUCTION**: Configurable memory limits per tenant - prevent resource exhaustion
 - [x] **BLOCKS PRODUCTION**: Configurable telemetry backends - allow host applications to choose monitoring systems
 - [x] Configurable compilation cache settings - TTL, size limits, eviction policies
-- [ ] Configurable error formatting - allow host applications to customize error presentation
+- [x] Configurable error formatting - allow host applications to customize error presentation
 - [ ] Plugin system for custom DSL extensions - enable domain-specific syntax
 - [ ] Configurable network building strategies - balance compilation speed vs runtime performance
 
