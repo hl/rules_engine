@@ -848,7 +848,7 @@ defmodule RulesEngine.DSL.Compiler do
     context = %{}
 
     case PluginRegistry.compile_node(ast_node, context) do
-      {:error, "no plugin handles node type: " <> _} ->
+      {:error, reason} when is_binary(reason) ->
         # No plugin handles this - this should not happen if validation passed
         raise "unsupported guard syntax during compilation: #{inspect(ast_node)}"
 

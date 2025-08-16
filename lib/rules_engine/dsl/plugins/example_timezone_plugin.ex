@@ -107,7 +107,7 @@ defmodule RulesEngine.DSL.Plugins.ExampleTimezonePlugin do
         # Basic format check for IANA timezone names
         String.match?(tz, ~r|^[A-Za-z]+/[A-Za-z_]+$|)
 
-      _ ->
+      _invalid_timezone ->
         false
     end
   end

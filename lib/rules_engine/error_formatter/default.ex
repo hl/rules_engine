@@ -140,7 +140,7 @@ defmodule RulesEngine.ErrorFormatter.Default do
     end
   end
 
-  defp format_additional_info(_), do: nil
+  defp format_additional_info(_error), do: nil
 
   defp format_context_info(context) when is_map(context) do
     context_parts = []
