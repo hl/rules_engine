@@ -22,7 +22,9 @@ defmodule RulesEngine.Application do
       # Start the Predicate registry for pluggable predicates
       RulesEngine.Engine.PredicateRegistry,
       # Start the Calculator registry for pluggable calculators
-      RulesEngine.Engine.CalculatorRegistry
+      RulesEngine.Engine.CalculatorRegistry,
+      # Start the DSL Plugin registry for custom syntax extensions
+      RulesEngine.DSL.PluginRegistry
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

@@ -6,6 +6,7 @@ defmodule RulesEngine.DSL.Validate do
 
   alias RulesEngine.Engine.CalculatorRegistry
   alias RulesEngine.Engine.PredicateRegistry
+  alias RulesEngine.DSL.PluginRegistry
 
   @type error :: %{code: atom(), message: String.t(), path: term()}
 
@@ -167,6 +168,29 @@ defmodule RulesEngine.DSL.Validate do
     type_errors = validate_predicate_expectations(op_atom, l, r, expectations, path)
 
     errs ++ type_errors ++ validate_term(l, bindings, path) ++ validate_term(r, bindings, path)
+  end
+
+  # Plugin extension point - validate custom AST nodes
+  defp validate_guard(ast_node, bindings, path) do
+    context = %{bindings: bindings, path: path}
+
+    case PluginRegistry.validate_node(ast_node, context) do
+      :ok ->
+        []
+
+      {:error, "no plugin handles node type: " <> _} ->
+        # No plugin handles this - treat as unsupported syntax
+        [
+          %{
+            code: :unsupported_syntax,
+            message: "unsupported syntax: #{inspect(ast_node)}",
+            path: path
+          }
+        ]
+
+      {:error, reason} ->
+        [%{code: :plugin_validation_error, message: reason, path: path}]
+    end
   end
 
   defp collection_like?({:call, _name, _args}), do: true

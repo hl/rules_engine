@@ -19,7 +19,7 @@ defmodule RulesEngine.DSL.Compiler do
   This module is fully compatible with Mix releases and does not depend on
   Mix being available at runtime.
   """
-  alias RulesEngine.DSL.{Parser, Validate}
+  alias RulesEngine.DSL.{Parser, PluginRegistry, Validate}
   alias RulesEngine.Engine.PredicateRegistry
 
   @doc """
@@ -842,6 +842,26 @@ defmodule RulesEngine.DSL.Compiler do
 
   defp guard_flatten({:and, a, b}), do: guard_flatten(a) ++ guard_flatten(b)
   defp guard_flatten({:or, a, b}), do: guard_flatten(a) ++ guard_flatten(b)
+
+  # Plugin extension point - compile custom AST nodes
+  defp guard_flatten(ast_node) do
+    context = %{}
+
+    case PluginRegistry.compile_node(ast_node, context) do
+      {:error, "no plugin handles node type: " <> _} ->
+        # No plugin handles this - this should not happen if validation passed
+        raise "unsupported guard syntax during compilation: #{inspect(ast_node)}"
+
+      compiled_node ->
+        # Plugin returned compiled IR node - convert to guard format if needed
+        case compiled_node do
+          # Already in guard format
+          %{"op" => _} -> [compiled_node]
+          # Recursively flatten compiled node
+          _ -> guard_flatten(compiled_node)
+        end
+    end
+  end
 
   defp compile_action({:emit, type, fields}) do
     %{
