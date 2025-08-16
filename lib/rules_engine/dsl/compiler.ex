@@ -965,7 +965,7 @@ defmodule RulesEngine.DSL.Compiler do
             }
           end)
 
-        # Extract not/exists patterns  
+        # Extract not/exists patterns
         rule_not_exists =
           (rule["beta_joins"] || [])
           |> Enum.filter(fn join -> join["op"] in ["not_exists", "exists"] end)

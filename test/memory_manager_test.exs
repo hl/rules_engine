@@ -2,8 +2,8 @@ defmodule RulesEngine.Engine.MemoryManagerTest do
   use ExUnit.Case, async: true
   doctest RulesEngine.Engine.MemoryManager
 
-  alias RulesEngine.Engine.{MemoryManager, State}
   alias RulesEngine.DSL.Compiler
+  alias RulesEngine.Engine.{MemoryManager, State}
 
   @simple_dsl """
   rule "test_rule" do
