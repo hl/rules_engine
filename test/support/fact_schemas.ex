@@ -87,6 +87,28 @@ defmodule RulesEngineTest.Support.FactSchemas do
           "effective_to"
         ]
       },
+      "ScheduledShift" => %{
+        "fields" => [
+          "id",
+          "employee_id",
+          "start_at",
+          "end_at",
+          "location",
+          "planned_hours",
+          "actual_hours",
+          "shift_type"
+        ]
+      },
+      "LocationRegulation" => %{
+        "fields" => [
+          "id",
+          "location",
+          "constraint_type",
+          "params",
+          "effective_from",
+          "effective_to"
+        ]
+      },
       "Shift" => %{
         "fields" => [
           "id",

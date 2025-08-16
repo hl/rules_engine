@@ -35,10 +35,29 @@ defmodule RulesEngine.Application do
       {:ok, pid} ->
         # Attach telemetry handlers after successful start
         RulesEngine.Telemetry.attach_handlers()
+
+        # Register configured calculator providers
+        register_calculator_providers()
+
         {:ok, pid}
 
       error ->
         error
     end
+  end
+
+  defp register_calculator_providers do
+    providers = Application.get_env(:rules_engine, :calculator_providers, [])
+
+    Enum.each(providers, fn provider ->
+      case RulesEngine.Engine.CalculatorRegistry.register_provider(provider) do
+        :ok ->
+          :ok
+
+        {:error, reason} ->
+          require Logger
+          Logger.warning("Failed to register calculator provider #{provider}: #{inspect(reason)}")
+      end
+    end)
   end
 end
