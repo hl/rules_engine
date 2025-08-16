@@ -4,9 +4,9 @@ defmodule RulesEngine.DSL.Validate do
   Ensures supported ops and basic operand shapes; checks binding references exist.
   """
 
+  alias RulesEngine.DSL.PluginRegistry
   alias RulesEngine.Engine.CalculatorRegistry
   alias RulesEngine.Engine.PredicateRegistry
-  alias RulesEngine.DSL.PluginRegistry
 
   @type error :: %{code: atom(), message: String.t(), path: term()}
 
