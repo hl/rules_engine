@@ -279,14 +279,15 @@ defmodule RulesEngine.Engine.State do
   defp estimate_eviction_count(excess_bytes, state) do
     facts_count = map_size(state.working_memory.facts)
 
-    if facts_count > 0 do
+    if facts_count > 0 and state.memory_usage_bytes > 0 do
       # Estimate average fact size and suggest eviction count
       avg_fact_size = state.memory_usage_bytes / facts_count
       suggested_count = max(1, round(excess_bytes / avg_fact_size))
       # Cap at 50% of facts to avoid complete eviction
       min(suggested_count, div(facts_count, 2))
     else
-      0
+      # Default to evicting 10% of facts if we can't estimate
+      max(1, div(facts_count, 10))
     end
   end
 end

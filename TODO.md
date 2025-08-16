@@ -77,7 +77,7 @@ A curated, actionable backlog to take RulesEngine from prototype to robust, docu
 - [x] **BLOCKS PRODUCTION**: Configurable refraction policies - allow host applications to control rule re-firing behavior  
 - [x] **BLOCKS PRODUCTION**: Pluggable predicate registry - enable host applications to add domain-specific predicates
 - [x] **BLOCKS PRODUCTION**: Pluggable calculator functions - enable host applications to add domain-specific calculations
-- [ ] **BLOCKS PRODUCTION**: Configurable memory limits per tenant - prevent resource exhaustion
+- [x] **BLOCKS PRODUCTION**: Configurable memory limits per tenant - prevent resource exhaustion
 - [ ] **BLOCKS PRODUCTION**: Configurable telemetry backends - allow host applications to choose monitoring systems
 - [ ] Configurable compilation cache settings - TTL, size limits, eviction policies
 - [ ] Configurable error formatting - allow host applications to customize error presentation

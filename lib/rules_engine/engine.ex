@@ -359,15 +359,25 @@ defmodule RulesEngine.Engine do
     case validate_facts(facts) do
       :ok ->
         # Add facts to working memory and propagate
-        {new_state, derived_facts} = WorkingMemory.assert_facts(state, facts)
+        {intermediate_state, derived_facts} = WorkingMemory.assert_facts(state, facts)
 
-        outputs = %{
-          asserted: facts,
-          derived: derived_facts,
-          activations: Agenda.recent_activations(new_state.agenda)
-        }
+        # Increment operation count and check memory limits
+        updated_state = State.increment_operation_count(intermediate_state)
 
-        {:ok, new_state, outputs}
+        case MemoryManager.check_and_enforce_limits(updated_state, updated_state.operation_count) do
+          {:ok, final_state} ->
+            outputs = %{
+              asserted: facts,
+              derived: derived_facts,
+              activations: Agenda.recent_activations(final_state.agenda)
+            }
+
+            {:ok, final_state, outputs}
+
+          {:error, :memory_limit_exceeded} ->
+            {:error,
+             {:memory_limit_exceeded, "Tenant memory limit exceeded during fact assertion"}}
+        end
 
       {:error, reason} ->
         {:error, reason}
@@ -398,15 +408,19 @@ defmodule RulesEngine.Engine do
 
   defp do_retract(state, ids, _opts) do
     # Remove facts from working memory and propagate
-    {new_state, retracted_facts} = WorkingMemory.retract_facts(state, ids)
+    {intermediate_state, retracted_facts} = WorkingMemory.retract_facts(state, ids)
 
+    # Increment operation count (retraction still counts as an operation)
+    updated_state = State.increment_operation_count(intermediate_state)
+
+    # Note: Memory check not needed for retraction as it only frees memory
     outputs = %{
       retracted: retracted_facts,
       derived: [],
       activations: []
     }
 
-    {:ok, new_state, outputs}
+    {:ok, updated_state, outputs}
   end
 
   defp validate_facts(facts) do
@@ -531,15 +545,36 @@ defmodule RulesEngine.Engine do
     # Execute actual rule RHS actions using ActionExecutor
     alias RulesEngine.Engine.ActionExecutor
 
-    {new_state, execution_result} = ActionExecutor.execute_actions(state, activation)
+    {intermediate_state, execution_result} = ActionExecutor.execute_actions(state, activation)
 
     # Assert any derived facts back into working memory
     final_state =
       if length(execution_result.derived_facts) > 0 do
-        {updated_state, _} = WorkingMemory.assert_facts(new_state, execution_result.derived_facts)
-        updated_state
+        {updated_state, _} =
+          WorkingMemory.assert_facts(intermediate_state, execution_result.derived_facts)
+
+        # Increment operation count and check memory limits for derived facts
+        state_with_count = State.increment_operation_count(updated_state)
+
+        case MemoryManager.check_and_enforce_limits(
+               state_with_count,
+               state_with_count.operation_count
+             ) do
+          {:ok, checked_state} ->
+            checked_state
+
+          {:error, :memory_limit_exceeded} ->
+            # Log warning but continue (derived facts already asserted)
+            require Logger
+
+            Logger.warning(
+              "Memory limit exceeded after deriving facts for rule #{activation.production_id}"
+            )
+
+            state_with_count
+        end
       else
-        new_state
+        intermediate_state
       end
 
     outputs = %{
